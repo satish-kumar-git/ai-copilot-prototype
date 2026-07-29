@@ -1,2 +1,2 @@
 rootProject.name = "ai-copilot-prototype"
-include("core", "requirement-engine")
+include("core", "requirement-engine", "url-shortener")

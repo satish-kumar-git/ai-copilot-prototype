@@ -10,28 +10,28 @@ public final class AnalysisMapper {
     private AnalysisMapper() {}
 
     public static AnalysisResponse toResponse(RequirementAnalysis analysis) {
-        return new AnalysisResponse(
-                analysis.getAnalysisId(),
-                analysis.getOriginalRequirement(),
-                analysis.getScenarioType(),
-                analysis.getScenarioRationale(),
-                analysis.getAmbiguities(),
-                analysis.getTasks().stream().map(AnalysisMapper::toTaskDto).toList(),
-                analysis.getRisks(),
-                analysis.getAssumptions(),
-                analysis.getAnalyzedAt()
-        );
+        return AnalysisResponse.builder()
+                .analysisId(analysis.getAnalysisId())
+                .originalRequirement(analysis.getOriginalRequirement())
+                .scenarioType(analysis.getScenarioType().name())
+                .scenarioRationale(analysis.getScenarioRationale())
+                .ambiguities(analysis.getIdentifiedAmbiguities())
+                .tasks(analysis.getTaskBreakdown().stream().map(AnalysisMapper::toTaskDto).toList())
+                .risks(analysis.getRisks())
+                .assumptions(analysis.getAssumptions())
+                .analyzedAt(analysis.getAnalyzedAt().toString())
+                .build();
     }
 
     private static TaskDto toTaskDto(EngineeringTask task) {
-        return new TaskDto(
-                task.getId(),
-                task.getTitle(),
-                task.getDescription(),
-                task.getCategory(),
-                task.getPriority(),
-                task.getDependencies(),
-                task.getAiPromptHint()
-        );
+        return TaskDto.builder()
+                .id(task.getId())
+                .title(task.getTitle())
+                .description(task.getDescription())
+                .category(task.getCategory().name())
+                .priority(task.getPriority().name())
+                .dependencies(task.getDependencies())
+                .aiPromptHint(task.getAiPromptHint())
+                .build();
     }
 }

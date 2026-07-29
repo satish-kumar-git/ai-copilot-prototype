@@ -494,23 +494,134 @@
       id: '1753776000000',
       title: 'AI Copilot Prototype — System Design & Architecture',
       prompt: `You are a senior product engineer and software architect.\n\nI want to build an "AI Copilot Prototype" — a backend service that helps software engineers move faster by transforming vague or informal requirements into structured, actionable engineering plans with AI-ready prompt hints for each task.\n\nThe system must:\n1. Accept a free-text software requirement (Greenfield, Brownfield, or Ambiguous).\n2. Classify the requirement into one of three scenario types:\n   - GREENFIELD: new system or feature ("build", "create", "implement")\n   - BROWNFIELD: change to an existing system ("fix", "enhance", "refactor", "migrate")\n   - AMBIGUOUS: unclear — cannot be safely decomposed without clarification\n3. Decompose the requirement into an ordered list of engineering tasks, each with:\n   - ID, title, description, category, priority, dependencies, and an AI prompt hint\n4. Identify ambiguities (undefined terms like "scalable", missing auth scope, no SLA)\n5. Generate relevant engineering risks and baseline assumptions\n6. Return the full analysis as a structured JSON response via a REST API\n\nDo the following:\n1. Define the product vision in one paragraph.\n2. List the core user personas (who uses this and why).\n3. Define 8 acceptance criteria in Given/When/Then format.\n4. Identify the top 5 risks of building this system.\n5. Propose the module architecture (how many modules, what each owns).\n6. Recommend the tech stack with rationale for each choice.\n\nOutput as structured markdown.`,
-      status: 'progress',
-      category: 'feature',
+      status: 'done',
+      category: 'research',
       tags: ['architecture', 'greenfield', 'AI', 'backend', 'design'],
       changes: [
         { text: 'Created project repository and added .gitignore', at: '2026-07-29T13:56:00.000Z' },
         { text: 'Created prompts/session.html — interactive prompt tracker', at: '2026-07-29T14:10:00.000Z' },
         { text: 'Generated requirement-analysis.md — full product vision, personas, 8 ACs, 5 risks, module architecture, tech stack', at: '2026-07-29T14:20:00.000Z' },
       ],
-      notes: 'Full analysis saved to prompts/requirement-analysis.md\n\nKey decisions:\n- Python 3.12 + FastAPI for backend\n- Anthropic Claude (claude-sonnet-4-5) as LLM provider\n- Pydantic v2 for schema validation\n- 7-module architecture: API Gateway, Orchestrator, Classifier, Ambiguity Detector, Task Decomposer, Risk Analyzer, LLM Adapter\n\nTop risk: LLM output inconsistency — mitigate with structured output mode + Pydantic validation + retry logic.',
+      notes: 'Full analysis saved to prompts/requirement-analysis.md\n\nKey decisions:\n- Python 3.12 + FastAPI for backend (later changed to Java 21 + Spring Boot 3.3.5)\n- Pydantic v2 / Jakarta Validation for schema validation\n- 7-module architecture: API Gateway, Orchestrator, Classifier, Ambiguity Detector, Task Decomposer, Risk Analyzer, LLM Adapter\n\nTop risk: LLM output inconsistency — mitigate with structured output mode + Pydantic validation + retry logic.',
       createdAt: '2026-07-29T13:53:00.000Z',
       updatedAt: '2026-07-29T14:20:00.000Z',
-    }
+    },
+    {
+      id: '1753777200000',
+      title: 'Java 21 Spring Boot Multi-Module Backend — Initial Build',
+      prompt: `You are a senior software architect designing the AI Copilot Prototype system.\n\nThe system is a Java 21, Spring Boot 3.3.5, Gradle Kotlin DSL multi-module backend application.\nIts purpose: accept a software requirement → classify it → decompose it into engineering tasks with AI prompt hints → return structured JSON.\n\nDesign the full system architecture:\n\n1. ASCII component diagram showing:\n   - REST Client → RequirementController → RequirementAnalyzerService\n   - RequirementAnalyzerService → ScenarioClassifierService\n   - RequirementAnalyzerService → TaskDecomposerService\n   - Core module (shared domain + DTOs)\n   - Requirement Engine module (Spring Boot app)\n\n2. Module ownership table:\n   core               → shared domain objects, DTOs, enums  → No\n   requirement-engine → REST API, services, classification  → Yes\n\n3. Data flow: trace a single request from HTTP POST to JSON response\n\n4. Domain model — every class, its type, and its fields:\n   ScenarioType, Priority, TaskCategory (enums)\n   ClassificationResult (record), EngineeringTask, RequirementAnalysis (classes)\n   RequirementRequest, AnalysisResponse, TaskDto (DTOs)\n\n5. REST API contract:\n   POST /api/v1/requirements/analyze → 200 AnalysisResponse\n   GET  /api/v1/requirements/health  → 200 String\n\n6. Classification algorithm design (keyword scoring)`,
+      status: 'done',
+      category: 'feature',
+      tags: ['java', 'spring-boot', 'gradle', 'multi-module', 'backend'],
+      changes: [
+        { text: 'Created multi-module Gradle project: core + requirement-engine', at: '2026-07-29T15:00:00.000Z' },
+        { text: 'Implemented ScenarioClassifierService — keyword-scoring algorithm (GREENFIELD/BROWNFIELD/AMBIGUOUS)', at: '2026-07-29T15:10:00.000Z' },
+        { text: 'Implemented TaskDecomposerService — 8 tasks per scenario type with AI prompt hints', at: '2026-07-29T15:20:00.000Z' },
+        { text: 'Implemented RequirementAnalyzerService — orchestrates classifier + decomposer + ambiguity detection', at: '2026-07-29T15:25:00.000Z' },
+        { text: 'Added RequirementController (POST /analyze, GET /health) + GlobalExceptionHandler', at: '2026-07-29T15:30:00.000Z' },
+        { text: 'Fixed Gradle 9.x JUnit Platform launcher issue — added testRuntimeOnly', at: '2026-07-29T15:40:00.000Z' },
+        { text: 'All 12 tests passing — BUILD SUCCESSFUL', at: '2026-07-29T15:45:00.000Z' },
+      ],
+      notes: 'Group: com.aicopilot | Port: 8080\n\nModule structure:\n- core: enums (ScenarioType, Priority, TaskCategory), domain (ClassificationResult record, EngineeringTask, RequirementAnalysis with builder), dto (RequirementRequest, TaskDto, AnalysisResponse records)\n- requirement-engine: Spring Boot app, controller, 3 services, mapper\n\nClassifier algorithm: count keyword matches for GREENFIELD vs BROWNFIELD sets → higher score wins → tie = AMBIGUOUS\n\nDecomposer: 8 tasks for GREENFIELD, 8 for BROWNFIELD, 3 for AMBIGUOUS — each with aiPromptHint\n\nBUG FIXED: GlobalExceptionHandler used Collectors.toMap without merge function — blank string triggers both @NotBlank and @Size, causing duplicate key IllegalArgumentException. Fixed with merge fn.',
+      createdAt: '2026-07-29T15:00:00.000Z',
+      updatedAt: '2026-07-29T15:45:00.000Z',
+    },
+    {
+      id: '1753778400000',
+      title: 'Gradle Multi-Module Scaffold Upgrade — Lombok, Springdoc, Actuator, Virtual Threads',
+      prompt: `You are a senior Java engineer. Generate the complete Gradle multi-module project scaffold for the AI Copilot Prototype. Nothing exists yet — this is from scratch.\n\nProject name: ai-copilot-prototype\nGroup: com.aiprototype\nVersion: 0.0.1-SNAPSHOT\nJava: 21\nModules: core (no Spring Boot), requirement-engine (Spring Boot 3.3.5)\n\nGenerate exactly these files with full content:\n\n1. settings.gradle.kts — rootProject.name + include modules\n2. build.gradle.kts (root) — java plugin, allprojects group/version/repo, subprojects java toolchain 21\n3. gradle.properties — daemon=true, parallel=true, caching=true\n4. core/build.gradle.kts — java plugin, dependency-management BOM, spring-boot-starter-validation, springdoc-openapi-starter-webmvc-ui 2.6.0, Lombok\n5. requirement-engine/build.gradle.kts — spring-boot 3.3.5, dependency-management 1.1.6, core dep, web/validation/actuator/springdoc, Lombok, test, bootJar archiveFileName\n6. application.yml — port 8090, virtual threads, actuator, springdoc paths, logging pattern\n7. RequirementEngineApplication.java — @SpringBootApplication entry point`,
+      status: 'done',
+      category: 'config',
+      tags: ['gradle', 'scaffold', 'lombok', 'springdoc', 'actuator', 'virtual-threads'],
+      changes: [
+        { text: 'Updated group com.aicopilot → com.aiprototype across all 7 scaffold files', at: '2026-07-29T16:00:00.000Z' },
+        { text: 'Added gradle.properties — daemon, parallel, caching enabled', at: '2026-07-29T16:02:00.000Z' },
+        { text: 'core/build.gradle.kts — added dependency-management BOM, spring-boot-starter-validation, springdoc 2.6.0, Lombok', at: '2026-07-29T16:05:00.000Z' },
+        { text: 'requirement-engine/build.gradle.kts — added actuator, springdoc, Lombok (compile+test), bootJar archiveFileName', at: '2026-07-29T16:06:00.000Z' },
+        { text: 'application.yml — port 8090, spring.threads.virtual.enabled=true, actuator exposure, springdoc paths, logging pattern', at: '2026-07-29T16:08:00.000Z' },
+        { text: 'Migrated all 18 Java source files from com.aicopilot.* → com.aiprototype.* (package rename + directory move)', at: '2026-07-29T16:12:00.000Z' },
+        { text: 'All 12 tests passing — BUILD SUCCESSFUL after clean build', at: '2026-07-29T16:15:00.000Z' },
+      ],
+      notes: 'Group: com.aiprototype | Port: 8090\n\nKey additions vs previous build:\n- Lombok added (compileOnly + annotationProcessor in both modules)\n- springdoc-openapi-starter-webmvc-ui 2.6.0 — Swagger UI at /swagger-ui.html, API docs at /api-docs\n- spring-boot-starter-actuator — health/info/metrics exposed\n- Virtual threads: spring.threads.virtual.enabled=true (Java 21 Project Loom)\n- bootJar output renamed to requirement-engine.jar\n\nPackage migration: used bash sed to bulk-rename com.aicopilot → com.aiprototype across all 18 source files + test files. Old directories deleted.\n\nEndpoints:\n  POST /api/v1/requirements/analyze\n  GET  /api/v1/requirements/health\n  GET  /actuator/health\n  GET  /swagger-ui.html\n  GET  /api-docs',
+      createdAt: '2026-07-29T16:00:00.000Z',
+      updatedAt: '2026-07-29T16:15:00.000Z',
+    },
+    {
+      id: '1753779600000',
+      title: 'Core Module Build — Lombok Domain Classes, Enums, Records, DTOs with OpenAPI Schemas',
+      prompt: `You are a senior Java engineer. The Gradle scaffold from Level 2 exists.\nNow build the core module: all shared domain classes, enums, records, and DTOs.\nPackage root: com.aiprototype.core\nNo Spring Boot — this is a plain Java library.\nUse Lombok and Jakarta Validation annotations.\n\nGenerate exactly these files with full content:\n\nENUMS:\n1. com/aiprototype/core/domain/ScenarioType.java — GREENFIELD, BROWNFIELD, AMBIGUOUS\n2. com/aiprototype/core/domain/Priority.java — HIGH, MEDIUM, LOW\n3. com/aiprototype/core/domain/TaskCategory.java — SCHEMA_DESIGN, API_DESIGN, SERVICE_IMPLEMENTATION, TESTING, DOCUMENTATION, CONFIGURATION, REFACTORING, BUG_FIX\n\nRECORDS:\n4. com/aiprototype/core/domain/ClassificationResult.java — record: ScenarioType type, String rationale\n\nDOMAIN CLASSES (Lombok @Data @Builder):\n5. com/aiprototype/core/domain/EngineeringTask.java — id, title, description, TaskCategory, Priority, @Builder.Default List<String> dependencies, aiPromptHint\n6. com/aiprototype/core/domain/RequirementAnalysis.java — analysisId, originalRequirement, ScenarioType, scenarioRationale, @Builder.Default identifiedAmbiguities, @Builder.Default taskBreakdown, @Builder.Default risks, @Builder.Default assumptions, LocalDateTime analyzedAt\n\nDTOs (with full OpenAPI @Schema annotations):\n7. com/aiprototype/core/dto/RequirementRequest.java (@Data) — requirement (@NotBlank @Size 10-5000 @Schema), context (@Schema)\n8. com/aiprototype/core/dto/TaskDto.java (@Data @Builder) — all EngineeringTask fields as String types + @Schema\n9. com/aiprototype/core/dto/AnalysisResponse.java (@Data @Builder) — all RequirementAnalysis fields as String types + @Schema`,
+      status: 'done',
+      category: 'feature',
+      tags: ['core', 'domain', 'lombok', 'dto', 'openapi', 'jakarta-validation'],
+      changes: [
+        { text: 'Moved enums ScenarioType, Priority, TaskCategory from enums/ → domain/ package', at: '2026-07-29T16:30:00.000Z' },
+        { text: 'Replaced manual builder on ClassificationResult — now a record in domain package', at: '2026-07-29T16:32:00.000Z' },
+        { text: 'Rewrote EngineeringTask — manual Builder replaced with Lombok @Data @Builder @NoArgsConstructor @AllArgsConstructor + @Builder.Default for dependencies', at: '2026-07-29T16:35:00.000Z' },
+        { text: 'Rewrote RequirementAnalysis — manual Builder replaced with Lombok; fields renamed: ambiguities→identifiedAmbiguities, tasks→taskBreakdown; all List fields get @Builder.Default', at: '2026-07-29T16:38:00.000Z' },
+        { text: 'Rewrote RequirementRequest — record replaced with Lombok @Data + @NoArgsConstructor @AllArgsConstructor + full @Schema annotations', at: '2026-07-29T16:40:00.000Z' },
+        { text: 'Rewrote TaskDto — record replaced with @Data @Builder; category/priority now String (not enum) + @Schema on every field', at: '2026-07-29T16:42:00.000Z' },
+        { text: 'Rewrote AnalysisResponse — record replaced with @Data @Builder; scenarioType/analyzedAt now String + @Schema on every field', at: '2026-07-29T16:44:00.000Z' },
+        { text: 'Updated 4 engine files: fixed imports (enums→domain), request.requirement()→getRequirement(), ambiguities→identifiedAmbiguities, tasks→taskBreakdown, mapper switched to builder pattern with .name() for enum→String', at: '2026-07-29T16:50:00.000Z' },
+        { text: 'Deleted old core/enums/ directory; all tests updated for new imports and Lombok constructor style — BUILD SUCCESSFUL', at: '2026-07-29T16:55:00.000Z' },
+      ],
+      notes: 'Major structural change to core module:\n\nPackage layout:\n  com.aiprototype.core.domain — ScenarioType, Priority, TaskCategory (enums), ClassificationResult (record), EngineeringTask, RequirementAnalysis (@Data @Builder)\n  com.aiprototype.core.dto    — RequirementRequest (@Data), TaskDto (@Data @Builder), AnalysisResponse (@Data @Builder)\n\nField renames in RequirementAnalysis:\n  ambiguities → identifiedAmbiguities\n  tasks       → taskBreakdown\n\nDTO type changes (record → @Data @Builder):\n  TaskDto.category, TaskDto.priority  → String (was enum)\n  AnalysisResponse.scenarioType       → String (was enum)\n  AnalysisResponse.analyzedAt         → String (was LocalDateTime)\n\nAnalysisMapper now uses builder pattern + .name() for all enum-to-String conversions.\n\nAdded @NoArgsConstructor + @AllArgsConstructor to RequirementRequest so test constructor calls and Jackson deserialization both work.\n\nBUG NOTE: @Builder.Default + @NoArgsConstructor leaves list fields null on direct new() — only builder sets defaults. Acceptable since RequirementAnalysis is always built via builder.',
+      createdAt: '2026-07-29T16:30:00.000Z',
+      updatedAt: '2026-07-29T16:55:00.000Z',
+    },
+    {
+      id: '1753780800000',
+      title: 'ScenarioClassifierService — Keyword-Scoring Classification with Set<String> and Fixed Rationale Messages',
+      prompt: `You are a senior Java engineer. The core module (Level 3) is complete.\nNow implement the ScenarioClassifierService in the requirement-engine module.\nPackage: com.aiprototype.engine.service\nUses: ClassificationResult, ScenarioType from core module.\n\nGenerate exactly this file with full content:\n\nScenarioClassifierService.java (@Service)\n\nLogic:\n- GREENFIELD_KEYWORDS (Set<String>): build, create, new, implement, design, develop, from scratch, initial, setup, bootstrap, scaffold, start, launch, introduce\n- BROWNFIELD_KEYWORDS (Set<String>): fix, bug, enhance, add, improve, refactor, migrate, upgrade, update, extend, modify, change, existing, current, legacy, replace, rewrite, performance, optimize, scale up, regression\n\npublic ClassificationResult classify(String requirement):\n  1. lowercase the requirement\n  2. Count GREENFIELD_KEYWORDS contained (stream + filter + count)\n  3. Count BROWNFIELD_KEYWORDS contained\n  4. Both == 0 → AMBIGUOUS: "No clear Greenfield or Brownfield indicators found — engineer must clarify scope"\n  5. greenfield > brownfield → GREENFIELD: "...construction language...new system or feature"\n  6. brownfield > greenfield → BROWNFIELD: "...modification language...existing system"\n  7. equal (non-zero) → AMBIGUOUS: "...equal Greenfield and Brownfield indicators..."`,
+      status: 'done',
+      category: 'feature',
+      tags: ['classifier', 'service', 'keyword-scoring', 'greenfield', 'brownfield'],
+      changes: [
+        { text: 'Replaced List<String> keyword collections with Set<String> — O(1) lookup, eliminates duplicates', at: '2026-07-29T17:10:00.000Z' },
+        { text: 'Replaced int score from list size with long from stream().filter().count()', at: '2026-07-29T17:12:00.000Z' },
+        { text: 'Added explicit zero-score branch: both==0 → AMBIGUOUS with "No clear...indicators found" message', at: '2026-07-29T17:13:00.000Z' },
+        { text: 'Replaced dynamic keyword-listing rationale with fixed descriptive sentences per spec', at: '2026-07-29T17:14:00.000Z' },
+        { text: 'Removed matchedKeywords() helper — score is direct stream pipeline', at: '2026-07-29T17:15:00.000Z' },
+        { text: 'Updated ScenarioClassifierServiceTest — 6 tests covering greenfield, brownfield, no-keywords AMBIGUOUS, tied AMBIGUOUS, dominant greenfield, dominant brownfield — BUILD SUCCESSFUL', at: '2026-07-29T17:20:00.000Z' },
+      ],
+      notes: 'Keyword sets (Set<String>, not List):\n\nGREENFIELD (14): build, create, new, implement, design, develop, from scratch, initial, setup, bootstrap, scaffold, start, launch, introduce\n\nBROWNFIELD (21): fix, bug, enhance, add, improve, refactor, migrate, upgrade, update, extend, modify, change, existing, current, legacy, replace, rewrite, performance, optimize, scale up, regression\n\nDecision tree:\n  both == 0  → AMBIGUOUS ("No clear Greenfield or Brownfield indicators found...")\n  green > brown → GREENFIELD ("...construction language...new system or feature")\n  brown > green → BROWNFIELD ("...modification language...existing system")\n  green == brown (non-zero) → AMBIGUOUS ("...equal Greenfield and Brownfield indicators...")\n\nTest assertions updated: rationale strings now checked with .contains() against fixed message fragments, not dynamic keyword lists.',
+      createdAt: '2026-07-29T17:10:00.000Z',
+      updatedAt: '2026-07-29T17:20:00.000Z',
+    },
+    {
+      id: '1753786800000',
+      title: 'Level 5 — TaskDecomposerService',
+      prompt: 'Implement TaskDecomposerService in requirement-engine:\n\n• T1 "Requirement Analysis & Clarification" must be prepended to EVERY scenario output (shared task, not duplicated per branch)\n• Use ArrayList + add(requirementAnalysisTask()) + addAll(scenarioTasks()) pattern — NOT List.of() with T1 embedded\n• Task IDs are T1, T2, ... (NOT T-01 format)\n\nGREENFIELD (T2–T11, total 11 tasks):\n  T2  Architecture & Design              API_DESIGN            HIGH   [T1]\n  T3  Project Scaffold                   CONFIGURATION         HIGH   [T2]\n  T4  Data Model & Flyway Migration      SCHEMA_DESIGN         HIGH   [T2]\n  T5  Repository Layer                   SERVICE_IMPLEMENTATION MEDIUM [T4]\n  T6  Service Layer                      SERVICE_IMPLEMENTATION HIGH   [T5]\n  T7  REST Controller                    API_DESIGN            HIGH   [T6]\n  T8  Global Exception Handler & MDC     CONFIGURATION         HIGH   [T7]\n  T9  Unit Tests                         TESTING               HIGH   [T6,T7]\n  T10 Configuration & Containerisation   CONFIGURATION         MEDIUM [T7]\n  T11 Documentation                      DOCUMENTATION         MEDIUM [T7,T9]\n\nBROWNFIELD (T2–T7, total 7 tasks):\n  T2  Codebase Analysis      CONFIGURATION         HIGH   [T1]\n  T3  Impact Assessment      SCHEMA_DESIGN         HIGH   [T2]\n  T4  Schema Migration       SCHEMA_DESIGN         HIGH   [T3]\n  T5  Implementation         SERVICE_IMPLEMENTATION HIGH   [T4]\n  T6  Regression & New Tests TESTING               HIGH   [T5]\n  T7  Documentation Update   DOCUMENTATION         LOW    [T5]\n\nAMBIGUOUS (T2–T6, total 6 tasks):\n  T2  Requirement Disambiguation  CONFIGURATION         HIGH   [T1]\n  T3  Hypothesis Formation        CONFIGURATION         HIGH   [T2]\n  T4  Investigation & Profiling   CONFIGURATION         HIGH   [T3]\n  T5  Scoped Implementation       SERVICE_IMPLEMENTATION MEDIUM [T4]\n  T6  Measurement & Outcome Validation TESTING          HIGH   [T5]\n\nEach task needs a self-contained aiPromptHint — a complete AI-ready prompt string interpolating the requirement text.\n\nAlso update RequirementControllerTest task count assertions: GREENFIELD→11, BROWNFIELD→7, AMBIGUOUS→6, and task ID assertion "T-01" → "T1".',
+      status: 'done',
+      category: 'feature',
+      tags: ['decomposer', 'service', 'tasks', 'greenfield', 'brownfield', 'ambiguous'],
+      changes: [
+        { text: 'Created TaskDecomposerService with decompose(requirement, scenarioType) entry point', at: '2026-07-29T17:30:00.000Z' },
+        { text: 'T1 requirementAnalysisTask() shared helper always prepended via ArrayList.add() before addAll()', at: '2026-07-29T17:31:00.000Z' },
+        { text: 'greenfieldTasks() returns List.of() with T2–T11 (10 tasks); combined total = 11', at: '2026-07-29T17:32:00.000Z' },
+        { text: 'brownfieldTasks() returns List.of() with T2–T7 (6 tasks); combined total = 7', at: '2026-07-29T17:33:00.000Z' },
+        { text: 'ambiguousTasks() returns List.of() with T2–T6 (5 tasks); combined total = 6', at: '2026-07-29T17:34:00.000Z' },
+        { text: 'Private task() factory helper builds EngineeringTask via Lombok @Builder', at: '2026-07-29T17:35:00.000Z' },
+        { text: 'All aiPromptHint strings inject [requirement] text for self-contained AI prompts', at: '2026-07-29T17:36:00.000Z' },
+        { text: 'Updated RequirementControllerTest: GREENFIELD hasSize(11), BROWNFIELD hasSize(7), AMBIGUOUS hasSize(6)', at: '2026-07-29T17:37:00.000Z' },
+        { text: 'Updated RequirementControllerTest: task ID assertion changed from "T-01" to "T1"', at: '2026-07-29T17:38:00.000Z' },
+        { text: 'BUILD SUCCESSFUL — all 8 tests pass after decomposer + test count updates', at: '2026-07-29T17:40:00.000Z' },
+      ],
+      notes: 'Task structure per scenario:\n\nGREENFIELD (11 total — T1 shared + T2–T11):\n  T2 Architecture & Design [API_DESIGN, HIGH, dep:T1]\n  T3 Project Scaffold [CONFIGURATION, HIGH, dep:T2]\n  T4 Data Model & Flyway Migration [SCHEMA_DESIGN, HIGH, dep:T2]\n  T5 Repository Layer [SERVICE_IMPLEMENTATION, MEDIUM, dep:T4]\n  T6 Service Layer [SERVICE_IMPLEMENTATION, HIGH, dep:T5]\n  T7 REST Controller [API_DESIGN, HIGH, dep:T6]\n  T8 Global Exception Handler & MDC Filter [CONFIGURATION, HIGH, dep:T7]\n  T9 Unit Tests [TESTING, HIGH, dep:T6,T7]\n  T10 Configuration & Containerisation [CONFIGURATION, MEDIUM, dep:T7]\n  T11 Documentation [DOCUMENTATION, MEDIUM, dep:T7,T9]\n\nBROWNFIELD (7 total — T1 shared + T2–T7):\n  T2 Codebase Analysis [CONFIGURATION, HIGH, dep:T1]\n  T3 Impact Assessment [SCHEMA_DESIGN, HIGH, dep:T2]\n  T4 Schema Migration [SCHEMA_DESIGN, HIGH, dep:T3]\n  T5 Implementation [SERVICE_IMPLEMENTATION, HIGH, dep:T4]\n  T6 Regression & New Tests [TESTING, HIGH, dep:T5]\n  T7 Documentation Update [DOCUMENTATION, LOW, dep:T5]\n\nAMBIGUOUS (6 total — T1 shared + T2–T6):\n  T2 Requirement Disambiguation [CONFIGURATION, HIGH, dep:T1]\n  T3 Hypothesis Formation [CONFIGURATION, HIGH, dep:T2]\n  T4 Investigation & Profiling [CONFIGURATION, HIGH, dep:T3]\n  T5 Scoped Implementation [SERVICE_IMPLEMENTATION, MEDIUM, dep:T4]\n  T6 Measurement & Outcome Validation [TESTING, HIGH, dep:T5]\n\nKey implementation decisions:\n  • ArrayList+addAll avoids mutating List.of() (immutable) — only mutable list can prepend T1\n  • switch expression covers all 3 enum values (GREENFIELD/BROWNFIELD/AMBIGUOUS) — no default needed\n  • Task IDs T1..T11 (no dash, no zero-padding) match controller test assertions\n  • T1 category=CONFIGURATION (closest fit — no ANALYSIS category in TaskCategory enum)',
+      createdAt: '2026-07-29T17:30:00.000Z',
+      updatedAt: '2026-07-29T17:40:00.000Z',
+    },
   ];
 
   function load() {
     try {
       entries = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+      // Merge any SEED entries not yet in localStorage (keyed by id)
+      const existingIds = new Set(entries.map(e => e.id));
+      const newSeedEntries = SEED.filter(s => !existingIds.has(s.id));
+      if (newSeedEntries.length > 0) {
+        entries = [...entries, ...newSeedEntries];
+        save();
+      }
       if (entries.length === 0) {
         entries = SEED;
         save();
