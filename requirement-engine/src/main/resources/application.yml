@@ -26,3 +26,7 @@ springdoc:
 logging:
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+
+# CORS — override in production: cors.allowed-origins=https://your-frontend.com
+cors:
+  allowed-origins: "*"
