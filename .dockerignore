@@ -1,0 +1,9 @@
+build/
+.gradle/
+.idea/
+.git/
+out/
+*.log
+logs/
+.DS_Store
+docker-compose.override.yml
