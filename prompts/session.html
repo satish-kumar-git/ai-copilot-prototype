@@ -1,402 +1,529 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AI Copilot — Prompt Session Tracker</title>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>AI Copilot — Session Tracker</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    :root {
-      --bg: #0f1117;
-      --surface: #1a1d27;
-      --surface2: #22263a;
-      --border: #2e3250;
-      --accent: #6c63ff;
-      --accent-dim: #4e47c4;
-      --green: #22c55e;
-      --yellow: #f59e0b;
-      --red: #ef4444;
-      --blue: #3b82f6;
-      --text: #e2e8f0;
-      --muted: #8892a4;
-      --radius: 10px;
-    }
+  :root {
+    --bg:       #0f1117;
+    --card:     #161b27;
+    --border:   #252d3d;
+    --accent:   #7c6dfa;
+    --green:    #34d399;
+    --yellow:   #fbbf24;
+    --red:      #f87171;
+    --blue:     #60a5fa;
+    --text:     #e2e8f0;
+    --muted:    #94a3b8;
+    --dim:      #4b5675;
+  }
 
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'Segoe UI', system-ui, sans-serif;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+  }
 
-    header {
-      padding: 18px 32px;
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      flex-wrap: wrap;
-    }
+  /* ── TOP BAR ──────────────────────────────── */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: #0c0f1a;
+    border-bottom: 1px solid var(--border);
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
 
-    header h1 {
-      font-size: 1.2rem;
-      font-weight: 700;
-      letter-spacing: 0.02em;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
+  .site-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+    white-space: nowrap;
+  }
 
-    header h1 span.logo {
-      background: var(--accent);
-      color: #fff;
-      border-radius: 6px;
-      padding: 2px 8px;
-      font-size: 0.75rem;
-      font-weight: 800;
-      letter-spacing: 0.08em;
-    }
+  .site-title span { color: var(--accent); }
 
-    .header-actions { display: flex; gap: 10px; align-items: center; }
+  .stat-chips { display: flex; gap: 6px; flex-wrap: wrap; }
 
-    .stats {
-      display: flex;
-      gap: 20px;
-      font-size: 0.8rem;
-      color: var(--muted);
-    }
+  .chip {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: #1a2035;
+    color: var(--muted);
+    white-space: nowrap;
+  }
 
-    .stats span strong { color: var(--text); }
+  .chip.done  { color: var(--green);  border-color: #1d4035; background: #0d2920; }
+  .chip.prog  { color: var(--yellow); border-color: #3d3010; background: #201a06; }
+  .chip.total { color: var(--accent); border-color: #2d2860; background: #14103a; }
 
-    main {
-      flex: 1;
-      display: grid;
-      grid-template-columns: 340px 1fr;
-      gap: 0;
-      height: calc(100vh - 64px);
-    }
+  .topbar-right { margin-left: auto; display: flex; gap: 8px; }
 
-    /* ── Left panel ── */
-    .panel-left {
-      background: var(--surface);
-      border-right: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
+  /* progress bar */
+  .progress-bar {
+    height: 3px;
+    background: #1a2035;
+    position: sticky;
+    top: 53px;
+    z-index: 99;
+  }
 
-    .panel-left-top {
-      padding: 16px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--green));
+    transition: width 0.4s ease;
+  }
 
-    input[type="text"], textarea, select {
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      color: var(--text);
-      border-radius: var(--radius);
-      padding: 8px 12px;
-      font-size: 0.875rem;
-      width: 100%;
-      outline: none;
-      transition: border-color 0.15s;
-      font-family: inherit;
-    }
+  /* ── PAGE ──────────────────────────────────── */
+  .page {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 24px 20px 80px;
+  }
 
-    input[type="text"]:focus, textarea:focus, select:focus {
-      border-color: var(--accent);
-    }
+  /* ── SEARCH + FILTER ──────────────────────── */
+  .toolbar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
 
-    textarea { resize: vertical; min-height: 80px; }
+  .toolbar input, .toolbar select {
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+    outline: none;
+    font-family: inherit;
+  }
 
-    .row { display: flex; gap: 8px; }
+  .toolbar input { flex: 1; min-width: 200px; }
+  .toolbar input:focus, .toolbar select:focus { border-color: var(--accent); }
 
-    select { flex: 1; }
+  /* ── ADD FORM ─────────────────────────────── */
+  .add-section {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
 
-    .tag-input {
-      display: flex;
-      gap: 6px;
-    }
+  .add-header {
+    padding: 12px 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    user-select: none;
+  }
 
-    .tag-input input { flex: 1; }
+  .add-header:hover { color: var(--text); }
 
-    .btn {
-      cursor: pointer;
-      border: none;
-      border-radius: var(--radius);
-      font-size: 0.875rem;
-      font-weight: 600;
-      padding: 8px 16px;
-      transition: opacity 0.15s, background 0.15s;
-    }
+  .add-body {
+    padding: 0 16px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
 
-    .btn:hover { opacity: 0.88; }
+  .add-body.hidden { display: none; }
 
-    .btn-primary { background: var(--accent); color: #fff; width: 100%; padding: 10px; }
-    .btn-ghost { background: var(--surface2); color: var(--text); }
-    .btn-icon { background: transparent; color: var(--muted); padding: 4px 8px; font-size: 1rem; }
-    .btn-icon:hover { color: var(--text); }
+  .add-body input, .add-body textarea, .add-body select {
+    background: #0f1117;
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+    width: 100%;
+    outline: none;
+    font-family: inherit;
+  }
 
-    /* search + filter */
-    .panel-filter {
-      padding: 10px 16px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      gap: 8px;
-    }
+  .add-body input:focus, .add-body textarea:focus, .add-body select:focus {
+    border-color: var(--accent);
+  }
 
-    .panel-filter input { flex: 1; }
+  .add-body textarea { resize: vertical; min-height: 80px; }
+  .add-row { display: flex; gap: 8px; }
+  .add-row select { flex: 1; }
 
-    /* entry list */
-    .entry-list {
-      flex: 1;
-      overflow-y: auto;
-      padding: 8px;
-    }
+  /* ── SECTION HEADER ──────────────────────── */
+  .section-header {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--dim);
+    padding: 8px 0 10px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
 
-    .entry-list::-webkit-scrollbar { width: 5px; }
-    .entry-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  .entry-count {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--accent);
+    background: #14103a;
+    border: 1px solid #2d2860;
+    border-radius: 12px;
+    padding: 2px 8px;
+  }
 
-    .entry-card {
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 12px 14px;
-      margin-bottom: 8px;
-      cursor: pointer;
-      transition: border-color 0.15s, background 0.15s;
-    }
+  /* ── ENTRY CARD ───────────────────────────── */
+  .entry-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 8px;
+    overflow: hidden;
+    transition: border-color 0.15s;
+  }
 
-    .entry-card:hover { border-color: var(--accent); }
-    .entry-card.active { border-color: var(--accent); background: #1e1f35; }
+  .entry-card:hover  { border-color: #3b4572; }
+  .entry-card.open   { border-color: var(--accent); }
 
-    .entry-card-top {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      margin-bottom: 4px;
-    }
+  .card-head {
+    padding: 12px 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    user-select: none;
+  }
 
-    .entry-num {
-      font-size: 0.7rem;
-      color: var(--accent);
-      font-weight: 700;
-      white-space: nowrap;
-    }
+  .lv-badge {
+    font-size: 10px;
+    font-weight: 800;
+    padding: 2px 7px;
+    border-radius: 5px;
+    background: #14103a;
+    color: var(--accent);
+    border: 1px solid #2d2860;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
 
-    .badge {
-      font-size: 0.65rem;
-      font-weight: 700;
-      padding: 2px 7px;
-      border-radius: 20px;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      white-space: nowrap;
-    }
+  .card-title {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    min-width: 0;
+  }
 
-    .badge-done { background: #16532840; color: var(--green); }
-    .badge-progress { background: #78350f40; color: var(--yellow); }
-    .badge-todo { background: #1e3a8a40; color: var(--blue); }
-    .badge-blocked { background: #7f1d1d40; color: var(--red); }
+  .card-title small {
+    display: block;
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--muted);
+    margin-top: 1px;
+  }
 
-    .entry-title {
-      font-size: 0.82rem;
-      font-weight: 600;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
+  .status-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 20px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
 
-    .entry-meta {
-      font-size: 0.72rem;
-      color: var(--muted);
-      margin-top: 4px;
-    }
+  .s-done     { background: #0d2920; color: var(--green);  border: 1px solid #1d4035; }
+  .s-progress { background: #201a06; color: var(--yellow); border: 1px solid #3d3010; }
+  .s-todo     { background: #0a1628; color: var(--blue);   border: 1px solid #1a3060; }
+  .s-blocked  { background: #200d0d; color: var(--red);    border: 1px solid #3d1010; }
 
-    .tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+  .arrow {
+    color: var(--dim);
+    font-size: 12px;
+    flex-shrink: 0;
+    transition: transform 0.2s;
+  }
 
-    .tag {
-      font-size: 0.65rem;
-      background: #2e3250;
-      color: var(--muted);
-      border-radius: 4px;
-      padding: 1px 6px;
-    }
+  .entry-card.open .arrow { transform: rotate(180deg); }
 
-    /* ── Right panel ── */
-    .panel-right {
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
+  /* card body */
+  .card-body {
+    display: none;
+    border-top: 1px solid var(--border);
+  }
 
-    .detail-header {
-      padding: 20px 28px 16px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 16px;
-    }
+  .entry-card.open .card-body { display: block; }
 
-    .detail-header h2 { font-size: 1.05rem; font-weight: 700; line-height: 1.4; }
-    .detail-header .meta { font-size: 0.78rem; color: var(--muted); margin-top: 4px; }
+  /* Q / A sections */
+  .qa-section {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+  }
 
-    .detail-actions { display: flex; gap: 8px; flex-shrink: 0; }
+  .qa-section:last-child { border-bottom: none; }
 
-    .detail-body {
-      flex: 1;
-      overflow-y: auto;
-      padding: 20px 28px;
-    }
+  .qa-label {
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
 
-    .detail-body::-webkit-scrollbar { width: 5px; }
-    .detail-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  .qa-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
 
-    .section-label {
-      font-size: 0.7rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--muted);
-      margin-bottom: 8px;
-    }
+  .ql { color: var(--accent); }
+  .al { color: var(--green); }
+  .nl { color: var(--yellow); }
 
-    .section { margin-bottom: 24px; }
+  /* prompt text */
+  .prompt-text {
+    font-size: 12px;
+    line-height: 1.7;
+    color: var(--muted);
+    white-space: pre-wrap;
+    word-break: break-word;
+    background: #0f1117;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    max-height: 220px;
+    overflow-y: auto;
+    font-family: 'Consolas', 'Cascadia Code', monospace;
+  }
 
-    .prompt-box {
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 14px 16px;
-      font-size: 0.875rem;
-      line-height: 1.65;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
+  .prompt-text::-webkit-scrollbar { width: 4px; }
+  .prompt-text::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 
-    .changes-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+  /* changes list */
+  .changes-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
 
-    .change-item {
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-left: 3px solid var(--accent);
-      border-radius: var(--radius);
-      padding: 10px 14px;
-      font-size: 0.84rem;
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 12px;
-    }
+  .changes-list li {
+    font-size: 12px;
+    color: var(--muted);
+    padding: 6px 10px;
+    background: #0f1117;
+    border-radius: 6px;
+    border-left: 2px solid var(--accent);
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+  }
 
-    .change-item .change-text { flex: 1; line-height: 1.5; }
-    .change-item .change-time { font-size: 0.7rem; color: var(--muted); white-space: nowrap; }
+  .changes-list li span { flex: 1; line-height: 1.5; }
 
-    .add-change-row {
-      display: flex;
-      gap: 8px;
-      margin-top: 8px;
-    }
+  .changes-list li small {
+    font-size: 10px;
+    color: var(--dim);
+    white-space: nowrap;
+    margin-top: 2px;
+    flex-shrink: 0;
+  }
 
-    .add-change-row input { flex: 1; }
+  .rm-btn {
+    background: none;
+    border: none;
+    color: var(--dim);
+    cursor: pointer;
+    font-size: 11px;
+    padding: 0 2px;
+    flex-shrink: 0;
+  }
 
-    .notes-area {
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 14px 16px;
-      font-size: 0.875rem;
-      line-height: 1.65;
-      min-height: 100px;
-      width: 100%;
-      color: var(--text);
-      font-family: inherit;
-      resize: vertical;
-      outline: none;
-    }
+  .rm-btn:hover { color: var(--red); }
 
-    .notes-area:focus { border-color: var(--accent); }
+  .add-change-row {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+  }
 
-    /* empty state */
-    .empty-state {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 12px;
-      color: var(--muted);
-      font-size: 0.9rem;
-      text-align: center;
-      padding: 40px;
-    }
+  .add-change-row input {
+    flex: 1;
+    background: #0f1117;
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 12px;
+    outline: none;
+    font-family: inherit;
+  }
 
-    .empty-state .icon { font-size: 3rem; opacity: 0.4; }
+  .add-change-row input:focus { border-color: var(--accent); }
 
-    /* confirm toast */
-    .toast {
-      position: fixed;
-      bottom: 24px;
-      right: 24px;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-left: 3px solid var(--green);
-      border-radius: var(--radius);
-      padding: 12px 20px;
-      font-size: 0.875rem;
-      color: var(--text);
-      z-index: 999;
-      opacity: 0;
-      transform: translateY(8px);
-      transition: opacity 0.2s, transform 0.2s;
-      pointer-events: none;
-    }
+  /* notes */
+  .notes-ta {
+    width: 100%;
+    background: #0f1117;
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 12px;
+    min-height: 90px;
+    resize: vertical;
+    outline: none;
+    font-family: 'Consolas', monospace;
+    line-height: 1.6;
+  }
 
-    .toast.show { opacity: 1; transform: translateY(0); }
+  .notes-ta:focus { border-color: var(--yellow); }
 
-    /* responsive */
-    @media (max-width: 720px) {
-      main { grid-template-columns: 1fr; }
-      .panel-right { display: none; }
-      .panel-right.visible { display: flex; }
-    }
-  </style>
+  /* tags */
+  .tag-row { display: flex; flex-wrap: wrap; gap: 4px; }
+
+  .tag {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 4px;
+    background: #14103a;
+    color: var(--accent);
+    border: 1px solid #2d2860;
+  }
+
+  /* card actions row */
+  .card-actions {
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-top: 1px solid var(--border);
+    background: #0f1117;
+  }
+
+  .card-actions select {
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 5px 8px;
+    font-size: 12px;
+    outline: none;
+    font-family: inherit;
+    cursor: pointer;
+  }
+
+  .card-meta-info { flex: 1; font-size: 11px; color: var(--dim); }
+
+  /* ── BUTTONS ──────────────────────────────── */
+  .btn {
+    cursor: pointer;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 12px;
+    font-family: inherit;
+    transition: all 0.12s;
+    background: var(--card);
+    color: var(--muted);
+  }
+
+  .btn:hover { border-color: #3b4572; color: var(--text); }
+
+  .btn-primary { background: var(--accent); color: #fff; border-color: transparent; }
+  .btn-primary:hover { background: #8b7dfb; }
+  .btn-danger { color: var(--red); }
+  .btn-danger:hover { border-color: #3d1010; background: #200d0d; }
+  .btn-sm { padding: 4px 9px; font-size: 11px; }
+
+  /* ── TOAST ────────────────────────────────── */
+  .toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--green);
+    border-radius: 8px;
+    padding: 9px 16px;
+    font-size: 13px;
+    z-index: 9999;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: all 0.2s;
+    pointer-events: none;
+  }
+
+  .toast.show { opacity: 1; transform: translateY(0); }
+
+  .no-entries {
+    text-align: center;
+    padding: 32px;
+    color: var(--dim);
+    font-size: 13px;
+  }
+</style>
 </head>
 <body>
 
-<header>
-  <h1>
-    <span class="logo">AI</span>
-    Copilot — Prompt Session Tracker
-  </h1>
-  <div class="header-actions">
-    <div class="stats" id="stats">
-      <span><strong id="stat-total">0</strong> prompts</span>
-      <span><strong id="stat-done">0</strong> done</span>
-      <span><strong id="stat-progress">0</strong> in progress</span>
-    </div>
-    <button class="btn btn-ghost" onclick="exportJSON()">Export</button>
-    <button class="btn btn-ghost" onclick="importJSON()">Import</button>
+<!-- ── TOP BAR ───────────────────────────────── -->
+<div class="topbar">
+  <div class="site-title">AI Copilot <span>Session Tracker</span></div>
+  <div class="stat-chips">
+    <span class="chip total" id="st-total">0 total</span>
+    <span class="chip done"  id="st-done">0 done</span>
+    <span class="chip prog"  id="st-prog">0 active</span>
   </div>
-</header>
+  <div class="topbar-right">
+    <button class="btn btn-sm" onclick="exportJSON()">↑ Export</button>
+    <button class="btn btn-sm" onclick="importJSON()">↓ Import</button>
+  </div>
+</div>
 
-<main>
-  <!-- Left: form + list -->
-  <div class="panel-left">
-    <div class="panel-left-top">
-      <input type="text" id="inp-title" placeholder="Prompt title / short description" />
-      <textarea id="inp-prompt" placeholder="Paste your full prompt here..."></textarea>
-      <div class="row">
+<!-- thin progress line -->
+<div class="progress-bar">
+  <div class="progress-fill" id="prog-fill" style="width:0%"></div>
+</div>
+
+<!-- ── PAGE ──────────────────────────────────── -->
+<div class="page">
+
+  <!-- ADD FORM -->
+  <div class="add-section">
+    <div class="add-header" onclick="toggleAddForm()">
+      <span>+ New Prompt Entry</span>
+      <span id="add-arrow">▼</span>
+    </div>
+    <div class="add-body hidden" id="add-body">
+      <input type="text" id="inp-title" placeholder="Title — e.g. Level 6 — RequirementAnalyzerService"/>
+      <textarea id="inp-prompt" placeholder="Paste the prompt here…"></textarea>
+      <div class="add-row">
         <select id="inp-status">
           <option value="todo">To Do</option>
           <option value="progress">In Progress</option>
@@ -406,498 +533,920 @@
         <select id="inp-category">
           <option value="">Category</option>
           <option value="feature">Feature</option>
+          <option value="config">Config</option>
+          <option value="testing">Testing</option>
+          <option value="devops">DevOps</option>
+          <option value="docs">Docs</option>
+          <option value="research">Research</option>
           <option value="bugfix">Bug Fix</option>
           <option value="refactor">Refactor</option>
-          <option value="research">Research</option>
-          <option value="config">Config</option>
-          <option value="docs">Docs</option>
-          <option value="other">Other</option>
         </select>
       </div>
-      <div class="tag-input">
-        <input type="text" id="inp-tag" placeholder="Add tag, press Enter" />
-      </div>
-      <div id="new-tags" class="tags"></div>
-      <button class="btn btn-primary" onclick="addEntry()">+ Add Prompt Entry</button>
-    </div>
-
-    <div class="panel-filter">
-      <input type="text" id="search" placeholder="Search prompts..." oninput="renderList()" />
-      <select id="filter-status" onchange="renderList()" style="width:120px;">
-        <option value="">All</option>
-        <option value="todo">To Do</option>
-        <option value="progress">In Progress</option>
-        <option value="done">Done</option>
-        <option value="blocked">Blocked</option>
-      </select>
-    </div>
-
-    <div class="entry-list" id="entry-list"></div>
-  </div>
-
-  <!-- Right: detail view -->
-  <div class="panel-right" id="panel-right">
-    <div class="empty-state" id="empty-state">
-      <div class="icon">📋</div>
-      <div>Select a prompt entry to view details</div>
-      <div style="font-size:0.78rem;">or add your first prompt on the left</div>
-    </div>
-
-    <div id="detail-view" style="display:none; flex-direction:column; height:100%;">
-      <div class="detail-header">
-        <div>
-          <h2 id="dv-title"></h2>
-          <div class="meta" id="dv-meta"></div>
-          <div class="tags" id="dv-tags" style="margin-top:8px;"></div>
-        </div>
-        <div class="detail-actions">
-          <select id="dv-status" onchange="updateStatus()" style="width:130px;"></select>
-          <button class="btn btn-ghost" onclick="deleteEntry()">Delete</button>
-        </div>
-      </div>
-
-      <div class="detail-body">
-        <div class="section">
-          <div class="section-label">Prompt</div>
-          <div class="prompt-box" id="dv-prompt"></div>
-        </div>
-
-        <div class="section">
-          <div class="section-label">Changes Tracked</div>
-          <ul class="changes-list" id="dv-changes"></ul>
-          <div class="add-change-row">
-            <input type="text" id="inp-change" placeholder="Log a change or outcome..." />
-            <button class="btn btn-ghost" onclick="addChange()">Add</button>
-          </div>
-        </div>
-
-        <div class="section">
-          <div class="section-label">Notes</div>
-          <textarea class="notes-area" id="dv-notes" placeholder="Additional notes, context, or observations..." oninput="updateNotes()"></textarea>
-        </div>
+      <input type="text" id="inp-tag" placeholder="Tags — type and press Enter"/>
+      <div id="new-tags" class="tag-row"></div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-primary" onclick="addEntry()">Add Entry</button>
+        <button class="btn" onclick="toggleAddForm()">Cancel</button>
       </div>
     </div>
   </div>
-</main>
+
+  <!-- SEARCH + FILTER -->
+  <div class="toolbar">
+    <input type="text" id="search" placeholder="🔍  Search entries…" oninput="renderList()"/>
+    <select id="filter-status" onchange="renderList()">
+      <option value="">All Status</option>
+      <option value="todo">To Do</option>
+      <option value="progress">In Progress</option>
+      <option value="done">Done</option>
+      <option value="blocked">Blocked</option>
+    </select>
+    <select id="filter-cat" onchange="renderList()">
+      <option value="">All Categories</option>
+      <option value="feature">Feature</option>
+      <option value="config">Config</option>
+      <option value="testing">Testing</option>
+      <option value="devops">DevOps</option>
+      <option value="docs">Docs</option>
+      <option value="research">Research</option>
+    </select>
+  </div>
+
+  <!-- SECTION HEADER -->
+  <div class="section-header">
+    <span>Prompt Entries</span>
+    <span class="entry-count" id="entry-count">0</span>
+  </div>
+
+  <!-- ENTRIES LIST -->
+  <div id="entry-list"></div>
+
+</div>
 
 <div class="toast" id="toast"></div>
 
 <script>
-  const STORAGE_KEY = 'ai-copilot-sessions';
-  let entries = [];
-  let activeId = null;
-  let pendingTags = [];
+const KEY = 'aic-sessions-v3';
+let entries = [];
+let pendingTags = [];
+let addOpen = false;
 
-  // ── persistence ──────────────────────────────────────────────
-  const SEED = [
-    {
-      id: '1753776000000',
-      title: 'AI Copilot Prototype — System Design & Architecture',
-      prompt: `You are a senior product engineer and software architect.\n\nI want to build an "AI Copilot Prototype" — a backend service that helps software engineers move faster by transforming vague or informal requirements into structured, actionable engineering plans with AI-ready prompt hints for each task.\n\nThe system must:\n1. Accept a free-text software requirement (Greenfield, Brownfield, or Ambiguous).\n2. Classify the requirement into one of three scenario types:\n   - GREENFIELD: new system or feature ("build", "create", "implement")\n   - BROWNFIELD: change to an existing system ("fix", "enhance", "refactor", "migrate")\n   - AMBIGUOUS: unclear — cannot be safely decomposed without clarification\n3. Decompose the requirement into an ordered list of engineering tasks, each with:\n   - ID, title, description, category, priority, dependencies, and an AI prompt hint\n4. Identify ambiguities (undefined terms like "scalable", missing auth scope, no SLA)\n5. Generate relevant engineering risks and baseline assumptions\n6. Return the full analysis as a structured JSON response via a REST API\n\nDo the following:\n1. Define the product vision in one paragraph.\n2. List the core user personas (who uses this and why).\n3. Define 8 acceptance criteria in Given/When/Then format.\n4. Identify the top 5 risks of building this system.\n5. Propose the module architecture (how many modules, what each owns).\n6. Recommend the tech stack with rationale for each choice.\n\nOutput as structured markdown.`,
-      status: 'done',
-      category: 'research',
-      tags: ['architecture', 'greenfield', 'AI', 'backend', 'design'],
-      changes: [
-        { text: 'Created project repository and added .gitignore', at: '2026-07-29T13:56:00.000Z' },
-        { text: 'Created prompts/session.html — interactive prompt tracker', at: '2026-07-29T14:10:00.000Z' },
-        { text: 'Generated requirement-analysis.md — full product vision, personas, 8 ACs, 5 risks, module architecture, tech stack', at: '2026-07-29T14:20:00.000Z' },
-      ],
-      notes: 'Full analysis saved to prompts/requirement-analysis.md\n\nKey decisions:\n- Python 3.12 + FastAPI for backend (later changed to Java 21 + Spring Boot 3.3.5)\n- Pydantic v2 / Jakarta Validation for schema validation\n- 7-module architecture: API Gateway, Orchestrator, Classifier, Ambiguity Detector, Task Decomposer, Risk Analyzer, LLM Adapter\n\nTop risk: LLM output inconsistency — mitigate with structured output mode + Pydantic validation + retry logic.',
-      createdAt: '2026-07-29T13:53:00.000Z',
-      updatedAt: '2026-07-29T14:20:00.000Z',
-    },
-    {
-      id: '1753777200000',
-      title: 'Java 21 Spring Boot Multi-Module Backend — Initial Build',
-      prompt: `You are a senior software architect designing the AI Copilot Prototype system.\n\nThe system is a Java 21, Spring Boot 3.3.5, Gradle Kotlin DSL multi-module backend application.\nIts purpose: accept a software requirement → classify it → decompose it into engineering tasks with AI prompt hints → return structured JSON.\n\nDesign the full system architecture:\n\n1. ASCII component diagram showing:\n   - REST Client → RequirementController → RequirementAnalyzerService\n   - RequirementAnalyzerService → ScenarioClassifierService\n   - RequirementAnalyzerService → TaskDecomposerService\n   - Core module (shared domain + DTOs)\n   - Requirement Engine module (Spring Boot app)\n\n2. Module ownership table:\n   core               → shared domain objects, DTOs, enums  → No\n   requirement-engine → REST API, services, classification  → Yes\n\n3. Data flow: trace a single request from HTTP POST to JSON response\n\n4. Domain model — every class, its type, and its fields:\n   ScenarioType, Priority, TaskCategory (enums)\n   ClassificationResult (record), EngineeringTask, RequirementAnalysis (classes)\n   RequirementRequest, AnalysisResponse, TaskDto (DTOs)\n\n5. REST API contract:\n   POST /api/v1/requirements/analyze → 200 AnalysisResponse\n   GET  /api/v1/requirements/health  → 200 String\n\n6. Classification algorithm design (keyword scoring)`,
-      status: 'done',
-      category: 'feature',
-      tags: ['java', 'spring-boot', 'gradle', 'multi-module', 'backend'],
-      changes: [
-        { text: 'Created multi-module Gradle project: core + requirement-engine', at: '2026-07-29T15:00:00.000Z' },
-        { text: 'Implemented ScenarioClassifierService — keyword-scoring algorithm (GREENFIELD/BROWNFIELD/AMBIGUOUS)', at: '2026-07-29T15:10:00.000Z' },
-        { text: 'Implemented TaskDecomposerService — 8 tasks per scenario type with AI prompt hints', at: '2026-07-29T15:20:00.000Z' },
-        { text: 'Implemented RequirementAnalyzerService — orchestrates classifier + decomposer + ambiguity detection', at: '2026-07-29T15:25:00.000Z' },
-        { text: 'Added RequirementController (POST /analyze, GET /health) + GlobalExceptionHandler', at: '2026-07-29T15:30:00.000Z' },
-        { text: 'Fixed Gradle 9.x JUnit Platform launcher issue — added testRuntimeOnly', at: '2026-07-29T15:40:00.000Z' },
-        { text: 'All 12 tests passing — BUILD SUCCESSFUL', at: '2026-07-29T15:45:00.000Z' },
-      ],
-      notes: 'Group: com.aicopilot | Port: 8080\n\nModule structure:\n- core: enums (ScenarioType, Priority, TaskCategory), domain (ClassificationResult record, EngineeringTask, RequirementAnalysis with builder), dto (RequirementRequest, TaskDto, AnalysisResponse records)\n- requirement-engine: Spring Boot app, controller, 3 services, mapper\n\nClassifier algorithm: count keyword matches for GREENFIELD vs BROWNFIELD sets → higher score wins → tie = AMBIGUOUS\n\nDecomposer: 8 tasks for GREENFIELD, 8 for BROWNFIELD, 3 for AMBIGUOUS — each with aiPromptHint\n\nBUG FIXED: GlobalExceptionHandler used Collectors.toMap without merge function — blank string triggers both @NotBlank and @Size, causing duplicate key IllegalArgumentException. Fixed with merge fn.',
-      createdAt: '2026-07-29T15:00:00.000Z',
-      updatedAt: '2026-07-29T15:45:00.000Z',
-    },
-    {
-      id: '1753778400000',
-      title: 'Gradle Multi-Module Scaffold Upgrade — Lombok, Springdoc, Actuator, Virtual Threads',
-      prompt: `You are a senior Java engineer. Generate the complete Gradle multi-module project scaffold for the AI Copilot Prototype. Nothing exists yet — this is from scratch.\n\nProject name: ai-copilot-prototype\nGroup: com.aiprototype\nVersion: 0.0.1-SNAPSHOT\nJava: 21\nModules: core (no Spring Boot), requirement-engine (Spring Boot 3.3.5)\n\nGenerate exactly these files with full content:\n\n1. settings.gradle.kts — rootProject.name + include modules\n2. build.gradle.kts (root) — java plugin, allprojects group/version/repo, subprojects java toolchain 21\n3. gradle.properties — daemon=true, parallel=true, caching=true\n4. core/build.gradle.kts — java plugin, dependency-management BOM, spring-boot-starter-validation, springdoc-openapi-starter-webmvc-ui 2.6.0, Lombok\n5. requirement-engine/build.gradle.kts — spring-boot 3.3.5, dependency-management 1.1.6, core dep, web/validation/actuator/springdoc, Lombok, test, bootJar archiveFileName\n6. application.yml — port 8090, virtual threads, actuator, springdoc paths, logging pattern\n7. RequirementEngineApplication.java — @SpringBootApplication entry point`,
-      status: 'done',
-      category: 'config',
-      tags: ['gradle', 'scaffold', 'lombok', 'springdoc', 'actuator', 'virtual-threads'],
-      changes: [
-        { text: 'Updated group com.aicopilot → com.aiprototype across all 7 scaffold files', at: '2026-07-29T16:00:00.000Z' },
-        { text: 'Added gradle.properties — daemon, parallel, caching enabled', at: '2026-07-29T16:02:00.000Z' },
-        { text: 'core/build.gradle.kts — added dependency-management BOM, spring-boot-starter-validation, springdoc 2.6.0, Lombok', at: '2026-07-29T16:05:00.000Z' },
-        { text: 'requirement-engine/build.gradle.kts — added actuator, springdoc, Lombok (compile+test), bootJar archiveFileName', at: '2026-07-29T16:06:00.000Z' },
-        { text: 'application.yml — port 8090, spring.threads.virtual.enabled=true, actuator exposure, springdoc paths, logging pattern', at: '2026-07-29T16:08:00.000Z' },
-        { text: 'Migrated all 18 Java source files from com.aicopilot.* → com.aiprototype.* (package rename + directory move)', at: '2026-07-29T16:12:00.000Z' },
-        { text: 'All 12 tests passing — BUILD SUCCESSFUL after clean build', at: '2026-07-29T16:15:00.000Z' },
-      ],
-      notes: 'Group: com.aiprototype | Port: 8090\n\nKey additions vs previous build:\n- Lombok added (compileOnly + annotationProcessor in both modules)\n- springdoc-openapi-starter-webmvc-ui 2.6.0 — Swagger UI at /swagger-ui.html, API docs at /api-docs\n- spring-boot-starter-actuator — health/info/metrics exposed\n- Virtual threads: spring.threads.virtual.enabled=true (Java 21 Project Loom)\n- bootJar output renamed to requirement-engine.jar\n\nPackage migration: used bash sed to bulk-rename com.aicopilot → com.aiprototype across all 18 source files + test files. Old directories deleted.\n\nEndpoints:\n  POST /api/v1/requirements/analyze\n  GET  /api/v1/requirements/health\n  GET  /actuator/health\n  GET  /swagger-ui.html\n  GET  /api-docs',
-      createdAt: '2026-07-29T16:00:00.000Z',
-      updatedAt: '2026-07-29T16:15:00.000Z',
-    },
-    {
-      id: '1753779600000',
-      title: 'Core Module Build — Lombok Domain Classes, Enums, Records, DTOs with OpenAPI Schemas',
-      prompt: `You are a senior Java engineer. The Gradle scaffold from Level 2 exists.\nNow build the core module: all shared domain classes, enums, records, and DTOs.\nPackage root: com.aiprototype.core\nNo Spring Boot — this is a plain Java library.\nUse Lombok and Jakarta Validation annotations.\n\nGenerate exactly these files with full content:\n\nENUMS:\n1. com/aiprototype/core/domain/ScenarioType.java — GREENFIELD, BROWNFIELD, AMBIGUOUS\n2. com/aiprototype/core/domain/Priority.java — HIGH, MEDIUM, LOW\n3. com/aiprototype/core/domain/TaskCategory.java — SCHEMA_DESIGN, API_DESIGN, SERVICE_IMPLEMENTATION, TESTING, DOCUMENTATION, CONFIGURATION, REFACTORING, BUG_FIX\n\nRECORDS:\n4. com/aiprototype/core/domain/ClassificationResult.java — record: ScenarioType type, String rationale\n\nDOMAIN CLASSES (Lombok @Data @Builder):\n5. com/aiprototype/core/domain/EngineeringTask.java — id, title, description, TaskCategory, Priority, @Builder.Default List<String> dependencies, aiPromptHint\n6. com/aiprototype/core/domain/RequirementAnalysis.java — analysisId, originalRequirement, ScenarioType, scenarioRationale, @Builder.Default identifiedAmbiguities, @Builder.Default taskBreakdown, @Builder.Default risks, @Builder.Default assumptions, LocalDateTime analyzedAt\n\nDTOs (with full OpenAPI @Schema annotations):\n7. com/aiprototype/core/dto/RequirementRequest.java (@Data) — requirement (@NotBlank @Size 10-5000 @Schema), context (@Schema)\n8. com/aiprototype/core/dto/TaskDto.java (@Data @Builder) — all EngineeringTask fields as String types + @Schema\n9. com/aiprototype/core/dto/AnalysisResponse.java (@Data @Builder) — all RequirementAnalysis fields as String types + @Schema`,
-      status: 'done',
-      category: 'feature',
-      tags: ['core', 'domain', 'lombok', 'dto', 'openapi', 'jakarta-validation'],
-      changes: [
-        { text: 'Moved enums ScenarioType, Priority, TaskCategory from enums/ → domain/ package', at: '2026-07-29T16:30:00.000Z' },
-        { text: 'Replaced manual builder on ClassificationResult — now a record in domain package', at: '2026-07-29T16:32:00.000Z' },
-        { text: 'Rewrote EngineeringTask — manual Builder replaced with Lombok @Data @Builder @NoArgsConstructor @AllArgsConstructor + @Builder.Default for dependencies', at: '2026-07-29T16:35:00.000Z' },
-        { text: 'Rewrote RequirementAnalysis — manual Builder replaced with Lombok; fields renamed: ambiguities→identifiedAmbiguities, tasks→taskBreakdown; all List fields get @Builder.Default', at: '2026-07-29T16:38:00.000Z' },
-        { text: 'Rewrote RequirementRequest — record replaced with Lombok @Data + @NoArgsConstructor @AllArgsConstructor + full @Schema annotations', at: '2026-07-29T16:40:00.000Z' },
-        { text: 'Rewrote TaskDto — record replaced with @Data @Builder; category/priority now String (not enum) + @Schema on every field', at: '2026-07-29T16:42:00.000Z' },
-        { text: 'Rewrote AnalysisResponse — record replaced with @Data @Builder; scenarioType/analyzedAt now String + @Schema on every field', at: '2026-07-29T16:44:00.000Z' },
-        { text: 'Updated 4 engine files: fixed imports (enums→domain), request.requirement()→getRequirement(), ambiguities→identifiedAmbiguities, tasks→taskBreakdown, mapper switched to builder pattern with .name() for enum→String', at: '2026-07-29T16:50:00.000Z' },
-        { text: 'Deleted old core/enums/ directory; all tests updated for new imports and Lombok constructor style — BUILD SUCCESSFUL', at: '2026-07-29T16:55:00.000Z' },
-      ],
-      notes: 'Major structural change to core module:\n\nPackage layout:\n  com.aiprototype.core.domain — ScenarioType, Priority, TaskCategory (enums), ClassificationResult (record), EngineeringTask, RequirementAnalysis (@Data @Builder)\n  com.aiprototype.core.dto    — RequirementRequest (@Data), TaskDto (@Data @Builder), AnalysisResponse (@Data @Builder)\n\nField renames in RequirementAnalysis:\n  ambiguities → identifiedAmbiguities\n  tasks       → taskBreakdown\n\nDTO type changes (record → @Data @Builder):\n  TaskDto.category, TaskDto.priority  → String (was enum)\n  AnalysisResponse.scenarioType       → String (was enum)\n  AnalysisResponse.analyzedAt         → String (was LocalDateTime)\n\nAnalysisMapper now uses builder pattern + .name() for all enum-to-String conversions.\n\nAdded @NoArgsConstructor + @AllArgsConstructor to RequirementRequest so test constructor calls and Jackson deserialization both work.\n\nBUG NOTE: @Builder.Default + @NoArgsConstructor leaves list fields null on direct new() — only builder sets defaults. Acceptable since RequirementAnalysis is always built via builder.',
-      createdAt: '2026-07-29T16:30:00.000Z',
-      updatedAt: '2026-07-29T16:55:00.000Z',
-    },
-    {
-      id: '1753780800000',
-      title: 'ScenarioClassifierService — Keyword-Scoring Classification with Set<String> and Fixed Rationale Messages',
-      prompt: `You are a senior Java engineer. The core module (Level 3) is complete.\nNow implement the ScenarioClassifierService in the requirement-engine module.\nPackage: com.aiprototype.engine.service\nUses: ClassificationResult, ScenarioType from core module.\n\nGenerate exactly this file with full content:\n\nScenarioClassifierService.java (@Service)\n\nLogic:\n- GREENFIELD_KEYWORDS (Set<String>): build, create, new, implement, design, develop, from scratch, initial, setup, bootstrap, scaffold, start, launch, introduce\n- BROWNFIELD_KEYWORDS (Set<String>): fix, bug, enhance, add, improve, refactor, migrate, upgrade, update, extend, modify, change, existing, current, legacy, replace, rewrite, performance, optimize, scale up, regression\n\npublic ClassificationResult classify(String requirement):\n  1. lowercase the requirement\n  2. Count GREENFIELD_KEYWORDS contained (stream + filter + count)\n  3. Count BROWNFIELD_KEYWORDS contained\n  4. Both == 0 → AMBIGUOUS: "No clear Greenfield or Brownfield indicators found — engineer must clarify scope"\n  5. greenfield > brownfield → GREENFIELD: "...construction language...new system or feature"\n  6. brownfield > greenfield → BROWNFIELD: "...modification language...existing system"\n  7. equal (non-zero) → AMBIGUOUS: "...equal Greenfield and Brownfield indicators..."`,
-      status: 'done',
-      category: 'feature',
-      tags: ['classifier', 'service', 'keyword-scoring', 'greenfield', 'brownfield'],
-      changes: [
-        { text: 'Replaced List<String> keyword collections with Set<String> — O(1) lookup, eliminates duplicates', at: '2026-07-29T17:10:00.000Z' },
-        { text: 'Replaced int score from list size with long from stream().filter().count()', at: '2026-07-29T17:12:00.000Z' },
-        { text: 'Added explicit zero-score branch: both==0 → AMBIGUOUS with "No clear...indicators found" message', at: '2026-07-29T17:13:00.000Z' },
-        { text: 'Replaced dynamic keyword-listing rationale with fixed descriptive sentences per spec', at: '2026-07-29T17:14:00.000Z' },
-        { text: 'Removed matchedKeywords() helper — score is direct stream pipeline', at: '2026-07-29T17:15:00.000Z' },
-        { text: 'Updated ScenarioClassifierServiceTest — 6 tests covering greenfield, brownfield, no-keywords AMBIGUOUS, tied AMBIGUOUS, dominant greenfield, dominant brownfield — BUILD SUCCESSFUL', at: '2026-07-29T17:20:00.000Z' },
-      ],
-      notes: 'Keyword sets (Set<String>, not List):\n\nGREENFIELD (14): build, create, new, implement, design, develop, from scratch, initial, setup, bootstrap, scaffold, start, launch, introduce\n\nBROWNFIELD (21): fix, bug, enhance, add, improve, refactor, migrate, upgrade, update, extend, modify, change, existing, current, legacy, replace, rewrite, performance, optimize, scale up, regression\n\nDecision tree:\n  both == 0  → AMBIGUOUS ("No clear Greenfield or Brownfield indicators found...")\n  green > brown → GREENFIELD ("...construction language...new system or feature")\n  brown > green → BROWNFIELD ("...modification language...existing system")\n  green == brown (non-zero) → AMBIGUOUS ("...equal Greenfield and Brownfield indicators...")\n\nTest assertions updated: rationale strings now checked with .contains() against fixed message fragments, not dynamic keyword lists.',
-      createdAt: '2026-07-29T17:10:00.000Z',
-      updatedAt: '2026-07-29T17:20:00.000Z',
-    },
-    {
-      id: '1753786800000',
-      title: 'Level 5 — TaskDecomposerService',
-      prompt: 'Implement TaskDecomposerService in requirement-engine:\n\n• T1 "Requirement Analysis & Clarification" must be prepended to EVERY scenario output (shared task, not duplicated per branch)\n• Use ArrayList + add(requirementAnalysisTask()) + addAll(scenarioTasks()) pattern — NOT List.of() with T1 embedded\n• Task IDs are T1, T2, ... (NOT T-01 format)\n\nGREENFIELD (T2–T11, total 11 tasks):\n  T2  Architecture & Design              API_DESIGN            HIGH   [T1]\n  T3  Project Scaffold                   CONFIGURATION         HIGH   [T2]\n  T4  Data Model & Flyway Migration      SCHEMA_DESIGN         HIGH   [T2]\n  T5  Repository Layer                   SERVICE_IMPLEMENTATION MEDIUM [T4]\n  T6  Service Layer                      SERVICE_IMPLEMENTATION HIGH   [T5]\n  T7  REST Controller                    API_DESIGN            HIGH   [T6]\n  T8  Global Exception Handler & MDC     CONFIGURATION         HIGH   [T7]\n  T9  Unit Tests                         TESTING               HIGH   [T6,T7]\n  T10 Configuration & Containerisation   CONFIGURATION         MEDIUM [T7]\n  T11 Documentation                      DOCUMENTATION         MEDIUM [T7,T9]\n\nBROWNFIELD (T2–T7, total 7 tasks):\n  T2  Codebase Analysis      CONFIGURATION         HIGH   [T1]\n  T3  Impact Assessment      SCHEMA_DESIGN         HIGH   [T2]\n  T4  Schema Migration       SCHEMA_DESIGN         HIGH   [T3]\n  T5  Implementation         SERVICE_IMPLEMENTATION HIGH   [T4]\n  T6  Regression & New Tests TESTING               HIGH   [T5]\n  T7  Documentation Update   DOCUMENTATION         LOW    [T5]\n\nAMBIGUOUS (T2–T6, total 6 tasks):\n  T2  Requirement Disambiguation  CONFIGURATION         HIGH   [T1]\n  T3  Hypothesis Formation        CONFIGURATION         HIGH   [T2]\n  T4  Investigation & Profiling   CONFIGURATION         HIGH   [T3]\n  T5  Scoped Implementation       SERVICE_IMPLEMENTATION MEDIUM [T4]\n  T6  Measurement & Outcome Validation TESTING          HIGH   [T5]\n\nEach task needs a self-contained aiPromptHint — a complete AI-ready prompt string interpolating the requirement text.\n\nAlso update RequirementControllerTest task count assertions: GREENFIELD→11, BROWNFIELD→7, AMBIGUOUS→6, and task ID assertion "T-01" → "T1".',
-      status: 'done',
-      category: 'feature',
-      tags: ['decomposer', 'service', 'tasks', 'greenfield', 'brownfield', 'ambiguous'],
-      changes: [
-        { text: 'Created TaskDecomposerService with decompose(requirement, scenarioType) entry point', at: '2026-07-29T17:30:00.000Z' },
-        { text: 'T1 requirementAnalysisTask() shared helper always prepended via ArrayList.add() before addAll()', at: '2026-07-29T17:31:00.000Z' },
-        { text: 'greenfieldTasks() returns List.of() with T2–T11 (10 tasks); combined total = 11', at: '2026-07-29T17:32:00.000Z' },
-        { text: 'brownfieldTasks() returns List.of() with T2–T7 (6 tasks); combined total = 7', at: '2026-07-29T17:33:00.000Z' },
-        { text: 'ambiguousTasks() returns List.of() with T2–T6 (5 tasks); combined total = 6', at: '2026-07-29T17:34:00.000Z' },
-        { text: 'Private task() factory helper builds EngineeringTask via Lombok @Builder', at: '2026-07-29T17:35:00.000Z' },
-        { text: 'All aiPromptHint strings inject [requirement] text for self-contained AI prompts', at: '2026-07-29T17:36:00.000Z' },
-        { text: 'Updated RequirementControllerTest: GREENFIELD hasSize(11), BROWNFIELD hasSize(7), AMBIGUOUS hasSize(6)', at: '2026-07-29T17:37:00.000Z' },
-        { text: 'Updated RequirementControllerTest: task ID assertion changed from "T-01" to "T1"', at: '2026-07-29T17:38:00.000Z' },
-        { text: 'BUILD SUCCESSFUL — all 8 tests pass after decomposer + test count updates', at: '2026-07-29T17:40:00.000Z' },
-      ],
-      notes: 'Task structure per scenario:\n\nGREENFIELD (11 total — T1 shared + T2–T11):\n  T2 Architecture & Design [API_DESIGN, HIGH, dep:T1]\n  T3 Project Scaffold [CONFIGURATION, HIGH, dep:T2]\n  T4 Data Model & Flyway Migration [SCHEMA_DESIGN, HIGH, dep:T2]\n  T5 Repository Layer [SERVICE_IMPLEMENTATION, MEDIUM, dep:T4]\n  T6 Service Layer [SERVICE_IMPLEMENTATION, HIGH, dep:T5]\n  T7 REST Controller [API_DESIGN, HIGH, dep:T6]\n  T8 Global Exception Handler & MDC Filter [CONFIGURATION, HIGH, dep:T7]\n  T9 Unit Tests [TESTING, HIGH, dep:T6,T7]\n  T10 Configuration & Containerisation [CONFIGURATION, MEDIUM, dep:T7]\n  T11 Documentation [DOCUMENTATION, MEDIUM, dep:T7,T9]\n\nBROWNFIELD (7 total — T1 shared + T2–T7):\n  T2 Codebase Analysis [CONFIGURATION, HIGH, dep:T1]\n  T3 Impact Assessment [SCHEMA_DESIGN, HIGH, dep:T2]\n  T4 Schema Migration [SCHEMA_DESIGN, HIGH, dep:T3]\n  T5 Implementation [SERVICE_IMPLEMENTATION, HIGH, dep:T4]\n  T6 Regression & New Tests [TESTING, HIGH, dep:T5]\n  T7 Documentation Update [DOCUMENTATION, LOW, dep:T5]\n\nAMBIGUOUS (6 total — T1 shared + T2–T6):\n  T2 Requirement Disambiguation [CONFIGURATION, HIGH, dep:T1]\n  T3 Hypothesis Formation [CONFIGURATION, HIGH, dep:T2]\n  T4 Investigation & Profiling [CONFIGURATION, HIGH, dep:T3]\n  T5 Scoped Implementation [SERVICE_IMPLEMENTATION, MEDIUM, dep:T4]\n  T6 Measurement & Outcome Validation [TESTING, HIGH, dep:T5]\n\nKey implementation decisions:\n  • ArrayList+addAll avoids mutating List.of() (immutable) — only mutable list can prepend T1\n  • switch expression covers all 3 enum values (GREENFIELD/BROWNFIELD/AMBIGUOUS) — no default needed\n  • Task IDs T1..T11 (no dash, no zero-padding) match controller test assertions\n  • T1 category=CONFIGURATION (closest fit — no ANALYSIS category in TaskCategory enum)',
-      createdAt: '2026-07-29T17:30:00.000Z',
-      updatedAt: '2026-07-29T17:40:00.000Z',
-    },
-  ];
+// ── SEED DATA ──────────────────────────────────────────────────────
+const SEED = [
+  {
+    id:'s1', level:'L1',
+    title:'System Design & Architecture',
+    prompt:`You are a senior product engineer and software architect.
 
-  function load() {
-    try {
-      entries = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-      // Merge any SEED entries not yet in localStorage (keyed by id)
-      const existingIds = new Set(entries.map(e => e.id));
-      const newSeedEntries = SEED.filter(s => !existingIds.has(s.id));
-      if (newSeedEntries.length > 0) {
-        entries = [...entries, ...newSeedEntries];
-        save();
-      }
-      if (entries.length === 0) {
-        entries = SEED;
-        save();
-      }
-    } catch { entries = SEED; save(); }
+I want to build an "AI Copilot Prototype" — a backend service that helps software engineers move faster by transforming vague requirements into structured engineering plans with AI-ready prompt hints.
+
+The system must:
+1. Accept free-text software requirements (Greenfield / Brownfield / Ambiguous)
+2. Classify into scenario types using keyword scoring
+3. Decompose into ordered engineering tasks with AI prompt hints
+4. Identify ambiguities, risks, and assumptions
+5. Return a full structured JSON analysis
+
+Deliverables:
+1. Product vision statement
+2. Core user personas (5)
+3. Acceptance criteria (8, Given/When/Then)
+4. Top 5 risks
+5. Proposed module architecture
+6. Recommended tech stack with rationale`,
+    status:'done', category:'research',
+    tags:['architecture','design','greenfield','product'],
+    changes:[
+      {text:'Created project repository and .gitignore', at:'2026-07-29T13:56:00Z'},
+      {text:'Created prompts/session.html — prompt tracker', at:'2026-07-29T14:10:00Z'},
+      {text:'Generated prompts/requirement-analysis.md — vision, 5 personas, 8 ACs, 5 risks, 7-module architecture, tech stack', at:'2026-07-29T14:20:00Z'},
+    ],
+    notes:'Saved to prompts/requirement-analysis.md\n\nKey decision: Java 21 + Spring Boot 3.3.5 over Python/FastAPI — better type safety for domain model.\nTop risk: LLM output inconsistency — mitigate with structured output + validation + retry.',
+    createdAt:'2026-07-29T13:53:00Z',
+  },
+  {
+    id:'s2', level:'L2a',
+    title:'Java 21 Spring Boot Multi-Module Backend',
+    prompt:`You are a senior software architect.
+
+Design the full system architecture for ai-copilot-prototype:
+
+1. ASCII component diagram
+2. Module ownership table: core (no Spring) + requirement-engine (Spring Boot)
+3. Data flow: trace single request from HTTP POST to JSON response
+4. Domain model — every class, enum, record, DTO with fields
+5. REST API contract: POST /api/v1/requirements/analyze + GET /health
+6. Classification algorithm design (keyword scoring)`,
+    status:'done', category:'feature',
+    tags:['java','spring-boot','gradle','multi-module'],
+    changes:[
+      {text:'Created multi-module Gradle project: core + requirement-engine', at:'2026-07-29T15:00:00Z'},
+      {text:'Implemented ScenarioClassifierService — keyword scoring', at:'2026-07-29T15:10:00Z'},
+      {text:'Implemented TaskDecomposerService — 8 tasks per scenario with AI prompt hints', at:'2026-07-29T15:20:00Z'},
+      {text:'Added RequirementController + GlobalExceptionHandler', at:'2026-07-29T15:30:00Z'},
+      {text:'Fixed Gradle 9.x JUnit Platform launcher (testRuntimeOnly added)', at:'2026-07-29T15:40:00Z'},
+      {text:'BUILD SUCCESSFUL — 12 tests passing', at:'2026-07-29T15:45:00Z'},
+    ],
+    notes:'Group: com.aiprototype | Port: 8090\nBUG fixed: GlobalExceptionHandler Collectors.toMap without merge fn on blank string.',
+    createdAt:'2026-07-29T15:00:00Z',
+  },
+  {
+    id:'s3', level:'L2b',
+    title:'Gradle Scaffold Upgrade (Lombok, Springdoc, Actuator, Virtual Threads)',
+    prompt:`You are a senior Java engineer.
+
+Generate the complete Gradle multi-module scaffold from scratch.
+Group: com.aiprototype | Java 21 | Modules: core + requirement-engine (Spring Boot 3.3.5)
+
+Files to generate:
+1. settings.gradle.kts
+2. build.gradle.kts (root)
+3. gradle.properties — daemon, parallel, caching enabled
+4. core/build.gradle.kts — BOM, validation, springdoc 2.6.0, Lombok
+5. requirement-engine/build.gradle.kts — Spring Boot 3.3.5, web, actuator, springdoc, Lombok, bootJar
+6. application.yml — port 8090, virtual threads, actuator, springdoc
+7. RequirementEngineApplication.java`,
+    status:'done', category:'config',
+    tags:['gradle','lombok','springdoc','actuator','virtual-threads'],
+    changes:[
+      {text:'Group migrated: com.aicopilot → com.aiprototype across all 18 source files', at:'2026-07-29T16:00:00Z'},
+      {text:'Lombok added to both modules (compileOnly + annotationProcessor)', at:'2026-07-29T16:05:00Z'},
+      {text:'Springdoc added → Swagger UI at /swagger-ui.html', at:'2026-07-29T16:06:00Z'},
+      {text:'spring.threads.virtual.enabled=true, port 8090', at:'2026-07-29T16:08:00Z'},
+      {text:'BUILD SUCCESSFUL — 12 tests passing after clean build', at:'2026-07-29T16:15:00Z'},
+    ],
+    notes:'Port: 8090 | Swagger UI: /swagger-ui.html | API docs: /api-docs\nbootJar renamed → requirement-engine.jar',
+    createdAt:'2026-07-29T16:00:00Z',
+  },
+  {
+    id:'s4', level:'L3',
+    title:'Core Module — Domain Classes, Enums, Records, DTOs',
+    prompt:`You are a senior Java engineer.
+
+Build the core module: all shared domain classes in com.aiprototype.core (no Spring Boot).
+
+Enums:
+  ScenarioType — GREENFIELD, BROWNFIELD, AMBIGUOUS
+  Priority     — HIGH, MEDIUM, LOW
+  TaskCategory — 8 values (SCHEMA_DESIGN, API_DESIGN, SERVICE_IMPLEMENTATION, TESTING, DOCUMENTATION, CONFIGURATION, REFACTORING, BUG_FIX)
+
+Record:
+  ClassificationResult(ScenarioType type, String rationale)
+
+Domain (@Data @Builder):
+  EngineeringTask — id, title, description, category, priority, @Builder.Default List<String> dependencies, aiPromptHint
+  RequirementAnalysis — analysisId, requirement, ScenarioType, rationale, identifiedAmbiguities, taskBreakdown, risks, assumptions, analyzedAt
+
+DTOs with @Schema:
+  RequirementRequest (@Data) — requirement (@NotBlank @Size 10-5000), context
+  TaskDto (@Data @Builder) — all EngineeringTask fields as String
+  AnalysisResponse (@Data @Builder) — all RequirementAnalysis fields as String`,
+    status:'done', category:'feature',
+    tags:['core','domain','lombok','dto','openapi','jakarta-validation'],
+    changes:[
+      {text:'Moved enums from enums/ → domain/ package', at:'2026-07-29T16:30:00Z'},
+      {text:'EngineeringTask — manual Builder → Lombok @Data @Builder + @Builder.Default dependencies', at:'2026-07-29T16:35:00Z'},
+      {text:'RequirementRequest — record → @Data + @NoArgsConstructor @AllArgsConstructor + @Schema', at:'2026-07-29T16:40:00Z'},
+      {text:'TaskDto + AnalysisResponse — records → @Data @Builder; enums → String; @Schema on every field', at:'2026-07-29T16:42:00Z'},
+      {text:'AnalysisMapper — switched to builder pattern with .name() for enum→String', at:'2026-07-29T16:50:00Z'},
+      {text:'BUILD SUCCESSFUL', at:'2026-07-29T16:55:00Z'},
+    ],
+    notes:'Package layout:\n  core.domain → enums + ClassificationResult + EngineeringTask + RequirementAnalysis\n  core.dto    → RequirementRequest, TaskDto, AnalysisResponse\n\nDTO fields are String (not enums/LocalDateTime) — serialization via .name().',
+    createdAt:'2026-07-29T16:30:00Z',
+  },
+  {
+    id:'s5', level:'L4',
+    title:'ScenarioClassifierService — Set<String> Keyword Scoring',
+    prompt:`Implement ScenarioClassifierService in com.aiprototype.engine.service.
+
+GREENFIELD_KEYWORDS (14, Set<String>):
+  build, create, new, implement, design, develop, from scratch, initial, setup, bootstrap, scaffold, start, launch, introduce
+
+BROWNFIELD_KEYWORDS (21, Set<String>):
+  fix, bug, enhance, add, improve, refactor, migrate, upgrade, update, extend, modify, change, existing, current, legacy, replace, rewrite, performance, optimize, scale up, regression
+
+classify(String requirement):
+  1. Lowercase the input
+  2. greenfieldScore = count matching keywords
+  3. brownfieldScore = count matching keywords
+  4. both==0   → AMBIGUOUS "No clear Greenfield or Brownfield indicators found"
+  5. green > brown → GREENFIELD "Requirement uses construction language"
+  6. brown > green → BROWNFIELD "Requirement uses modification language"
+  7. equal > 0  → AMBIGUOUS "Equal Greenfield and Brownfield indicators"`,
+    status:'done', category:'feature',
+    tags:['classifier','service','keyword-scoring'],
+    changes:[
+      {text:'List<String> → Set<String> for O(1) keyword lookup', at:'2026-07-29T17:10:00Z'},
+      {text:'int score → long from stream().filter().count()', at:'2026-07-29T17:12:00Z'},
+      {text:'Zero-score branch → AMBIGUOUS "No clear indicators found"', at:'2026-07-29T17:13:00Z'},
+      {text:'Fixed rationale messages to static strings (not dynamic keyword lists)', at:'2026-07-29T17:14:00Z'},
+      {text:'ScenarioClassifierServiceTest — 6 tests, all PASS', at:'2026-07-29T17:20:00Z'},
+    ],
+    notes:'Decision tree:\n  both==0      → AMBIGUOUS\n  green > brown → GREENFIELD\n  brown > green → BROWNFIELD\n  equal > 0    → AMBIGUOUS',
+    createdAt:'2026-07-29T17:10:00Z',
+  },
+  {
+    id:'s6', level:'L5',
+    title:'TaskDecomposerService — T1-First, 11 / 7 / 6 Tasks',
+    prompt:`Implement TaskDecomposerService with decompose(requirement, scenarioType).
+
+T1 (shared) = "Requirement Analysis & Clarification" — always prepended via ArrayList + add + addAll.
+
+GREENFIELD T2–T11 (total 11):
+  Architecture & Design, Project Scaffold, Data Model & Flyway, Repository Layer, Service Layer, REST Controller, GlobalExceptionHandler+MDC, Unit Tests, Config & Containerisation, Documentation
+
+BROWNFIELD T2–T7 (total 7):
+  Codebase Analysis, Impact Assessment, Schema Migration, Implementation, Regression+New Tests, Documentation Update
+
+AMBIGUOUS T2–T6 (total 6):
+  Requirement Disambiguation, Hypothesis Formation, Investigation+Profiling, Scoped Implementation, Measurement+Outcome Validation
+
+Each task has: category, priority, dependencies (IDs of preceding tasks), aiPromptHint (interpolates the requirement text).`,
+    status:'done', category:'feature',
+    tags:['decomposer','service','tasks','greenfield','brownfield'],
+    changes:[
+      {text:'TaskDecomposerService created — decompose() with switch expression', at:'2026-07-29T17:30:00Z'},
+      {text:'T1 prepended via ArrayList.add() + addAll() — avoids mutating immutable List.of()', at:'2026-07-29T17:31:00Z'},
+      {text:'greenfieldTasks() — 10 tasks (T2–T11)', at:'2026-07-29T17:32:00Z'},
+      {text:'brownfieldTasks() — 6 tasks (T2–T7)', at:'2026-07-29T17:33:00Z'},
+      {text:'ambiguousTasks() — 5 tasks (T2–T6)', at:'2026-07-29T17:34:00Z'},
+      {text:'BUILD SUCCESSFUL — 8 tests passing', at:'2026-07-29T17:40:00Z'},
+    ],
+    notes:'Task IDs: T1..T11 (no dash, no zero-padding)\nT1 category=CONFIGURATION (no ANALYSIS category in TaskCategory enum)',
+    createdAt:'2026-07-29T17:30:00Z',
+  },
+  {
+    id:'s7', level:'L6',
+    title:'RequirementAnalyzerService — Orchestrator returns AnalysisResponse',
+    prompt:`Implement RequirementAnalyzerService — orchestrator that coordinates both services.
+@Service @RequiredArgsConstructor @Slf4j
+
+analyze(RequirementRequest) → AnalysisResponse:
+  1. Log "Analyzing requirement [{} chars]"
+  2. classifierService.classify(requirement)
+  3. identifyAmbiguities(requirement) — 6 pattern checks
+  4. decomposerService.decompose(requirement, type)
+  5. buildRisks(type), buildAssumptions(type)
+  6. Log "Analysis complete: type={}, tasks={}, ambiguities={}"
+  7. Build and return AnalysisResponse via builder
+
+identifyAmbiguities — 6 checks:
+  scalable/scale, fast/slow/performance, no-auth-keywords, no-db-keywords, improve/enhance/optimize, no-sla
+
+buildRisks: GREENFIELD(5)+2AI=7, BROWNFIELD(4)+2AI=6, AMBIGUOUS(3)+2AI=5
+buildAssumptions: GREENFIELD=5, BROWNFIELD=4, AMBIGUOUS=3`,
+    status:'done', category:'feature',
+    tags:['analyzer','orchestrator','ambiguity','risks','assumptions'],
+    changes:[
+      {text:'Full rewrite — service now returns AnalysisResponse directly (previously RequirementAnalysis)', at:'2026-07-29T17:50:00Z'},
+      {text:'@Slf4j logging at entry and exit of analyze()', at:'2026-07-29T17:51:00Z'},
+      {text:'identifyAmbiguities() — 6 pattern checks with specific messages', at:'2026-07-29T17:52:00Z'},
+      {text:'buildRisks() — scenario-specific + 2 always-appended AI risks (HALLUCINATION, COVERAGE_GAP)', at:'2026-07-29T17:53:00Z'},
+      {text:'RequirementController updated — removed AnalysisMapper.toResponse() (service maps directly)', at:'2026-07-29T17:55:00Z'},
+      {text:'Tests updated — risks hasSize(3→7), assumptions hasSize(3→5)', at:'2026-07-29T17:56:00Z'},
+      {text:'BUILD SUCCESSFUL', at:'2026-07-29T17:58:00Z'},
+    ],
+    notes:'Key change: service returns AnalysisResponse, not RequirementAnalysis.\nAmbiguity messages use lowercase to match containsString() test assertions.\n2 AI risks always appended: AI_HALLUCINATION + AI_COVERAGE_GAP.',
+    createdAt:'2026-07-29T17:50:00Z',
+  },
+  {
+    id:'s8', level:'L7',
+    title:'REST Layer — RequirementController + OpenApiConfig',
+    prompt:`Implement the REST layer for requirement-engine.
+
+RequirementController.java:
+  @RestController @RequestMapping("/api/v1/requirements") @RequiredArgsConstructor
+  @Tag(name="Requirement Engine", description="Analyses software requirements...")
+
+  POST /analyze  — @Valid @RequestBody RequirementRequest → ResponseEntity<AnalysisResponse>
+    @Operation + @ApiResponses for 200, 400, 422, 500
+
+  GET  /health   — returns "Requirement Engine is running"
+
+OpenApiConfig.java:
+  @Configuration @Bean OpenAPI:
+    title="AI Copilot Prototype — Requirement Engine", version="1.0.0"
+    contact: name="Engineering", email="engineering@aiprototype.com"`,
+    status:'done', category:'feature',
+    tags:['controller','rest','openapi','swagger','springdoc'],
+    changes:[
+      {text:'RequirementController — added @RequiredArgsConstructor (removed manual constructor)', at:'2026-07-29T18:05:00Z'},
+      {text:'Added @Tag, @Operation, @ApiResponses to both endpoints', at:'2026-07-29T18:06:00Z'},
+      {text:'Health endpoint text → "Requirement Engine is running"', at:'2026-07-29T18:07:00Z'},
+      {text:'Created config/ package — OpenApiConfig.java with Info + Contact bean', at:'2026-07-29T18:08:00Z'},
+      {text:'BUILD SUCCESSFUL', at:'2026-07-29T18:10:00Z'},
+    ],
+    notes:'Swagger UI: http://localhost:8090/swagger-ui.html\nAPI docs: http://localhost:8090/api-docs\nNew package: com.aiprototype.engine.config',
+    createdAt:'2026-07-29T18:05:00Z',
+  },
+  {
+    id:'s9', level:'L8',
+    title:'Exception Handling Layer — ErrorResponse + GlobalExceptionHandler',
+    prompt:`Implement exception handling in com.aiprototype.engine.exception.
+
+ErrorResponse.java (@Data @Builder):
+  int status, String error, String message, String path, LocalDateTime timestamp
+  @Builder.Default List<String> details = List.of()
+
+InvalidRequirementException.java extends RuntimeException:
+  public InvalidRequirementException(String message)
+
+GlobalExceptionHandler.java (@RestControllerAdvice @Slf4j):
+  a) MethodArgumentNotValidException → 400 VALIDATION_ERROR
+  b) InvalidRequirementException     → 422 INVALID_REQUIREMENT
+  c) HttpMediaTypeNotSupportedException → 415 UNSUPPORTED_MEDIA_TYPE
+     NOTE: explicit handler needed — @ExceptionHandler(Exception.class) has higher resolver
+     priority than DefaultHandlerExceptionResolver, so 415 becomes 500 without this
+  d) Exception → 500 INTERNAL_ERROR`,
+    status:'done', category:'feature',
+    tags:['exception','error-handling','validation','rest'],
+    changes:[
+      {text:'Created exception/ package with ErrorResponse, InvalidRequirementException, GlobalExceptionHandler', at:'2026-07-29T18:20:00Z'},
+      {text:'Moved GlobalExceptionHandler from controller/ to exception/ package', at:'2026-07-29T18:21:00Z'},
+      {text:'ErrorResponse: Map<String,Object> → typed @Data @Builder with int status', at:'2026-07-29T18:22:00Z'},
+      {text:'Added explicit HttpMediaTypeNotSupportedException handler → 415', at:'2026-07-29T18:23:00Z'},
+      {text:'ControllerTest updated: $.status is("BAD_REQUEST") → is(400)', at:'2026-07-29T18:24:00Z'},
+      {text:'BUILD SUCCESSFUL', at:'2026-07-29T18:25:00Z'},
+    ],
+    notes:'Spring resolver priority: ExceptionHandlerExceptionResolver (order 0) > DefaultHandlerExceptionResolver (order 2).\nWithout explicit 415 handler, @ExceptionHandler(Exception.class) intercepts HttpMediaTypeNotSupportedException → returns 500.',
+    createdAt:'2026-07-29T18:20:00Z',
+  },
+  {
+    id:'s10', level:'L9',
+    title:'Unit Tests — ScenarioClassifierService + TaskDecomposerService',
+    prompt:`Write unit tests with no Spring context.
+Stack: JUnit 5, @ExtendWith(MockitoExtension.class)
+
+ScenarioClassifierServiceTest (6 tests):
+  - classify_greenfieldKeyword_returnsGreenfield
+  - classify_brownfieldKeyword_returnsBrownfield
+  - classify_noKeywords_returnsAmbiguous
+  - classify_mixedEqualKeywords_returnsAmbiguous
+  - classify_caseInsensitive_works (uppercase "BUILD")
+  - classify_multipleGreenfieldKeywords_highScore
+
+TaskDecomposerServiceTest (8 tests):
+  - decompose_greenfield_returnsT1PlusTenTasks  (size==11, first id==T1)
+  - decompose_brownfield_returnsT1PlusSixTasks  (size==7)
+  - decompose_ambiguous_returnsT1PlusFiveTasks  (size==6)
+  - decompose_greenfield_allHighPriorityTasksFirst
+    NOTE: GREENFIELD interleaves MEDIUM (T5) with HIGH (T6-T9)
+    → assert first 4 are HIGH + check distribution (8 HIGH, 3 MEDIUM)
+  - decompose_greenfield_dependenciesAreValid
+  - @ParameterizedTest @EnumSource: decompose_allTasks_haveNonNullAiPromptHint`,
+    status:'done', category:'testing',
+    tags:['junit5','mockito','unit-tests','classifier','decomposer'],
+    changes:[
+      {text:'ScenarioClassifierServiceTest — 6 tests, all PASS', at:'2026-07-29T18:40:00Z'},
+      {text:'TaskDecomposerServiceTest — 8 tests: 5 @Test + 1 @ParameterizedTest×3', at:'2026-07-29T18:45:00Z'},
+      {text:'Priority ordering test adjusted — distribution check (8 HIGH, 3 MEDIUM) not strict ordering', at:'2026-07-29T18:46:00Z'},
+      {text:'BUILD SUCCESSFUL — 22 tests passing total', at:'2026-07-29T18:50:00Z'},
+    ],
+    notes:'GREENFIELD priority order: HIGH×4 (T1-T4), MEDIUM (T5), HIGH×4 (T6-T9), MEDIUM×2 (T10-T11).\nStrict "all HIGH before MEDIUM" assertion fails — test checks distribution instead.',
+    createdAt:'2026-07-29T18:40:00Z',
+  },
+  {
+    id:'s11', level:'L10',
+    title:'Unit Tests — RequirementAnalyzerService with Mockito',
+    prompt:`Write unit tests for RequirementAnalyzerService.
+@ExtendWith(MockitoExtension.class)
+@Mock ScenarioClassifierService classifierService
+@Mock TaskDecomposerService decomposerService
+@InjectMocks RequirementAnalyzerService analyzerService
+
+10 tests:
+  1. analyze_greenfieldRequirement_returnsAnalysisWithCorrectType
+  2. analyze_scalableKeyword_includesScalableAmbiguity — contains "scalable" and "undefined"
+  3. analyze_authKeywordAbsent_includesAuthAmbiguity  — "Authentication and authorisation scope not specified"
+  4. analyze_fastKeyword_includesPerformanceAmbiguity — "p95 latency"
+  5. analyze_greenfieldType_includesOverengineeringRisk — "DESIGN: Over-engineering"
+  6. analyze_brownfieldType_includesRegressionRisk — "REGRESSION"
+  7. analyze_ambiguousType_includesPrematureCodeRisk — "PREMATURE_CODE"
+  8. @ParameterizedTest @MethodSource: analyze_allTypes_alwaysIncludeAiHallucinationRisk
+  9. analyze_greenfieldAssumptions_containsJava21Stack — "Java 21"
+  10. analyze_analyzedAt_isNotNull`,
+    status:'done', category:'testing',
+    tags:['junit5','mockito','unit-tests','analyzer','parameterized'],
+    changes:[
+      {text:'RequirementAnalyzerServiceTest — 12 total invocations (9 @Test + 1 @ParameterizedTest×3)', at:'2026-07-29T19:00:00Z'},
+      {text:'sampleTask() helper creates real EngineeringTask via @Builder to avoid NPE in toDto()', at:'2026-07-29T19:01:00Z'},
+      {text:'allScenarioTypes() static @MethodSource — Stream.of(ScenarioType.values())', at:'2026-07-29T19:02:00Z'},
+      {text:'BUILD SUCCESSFUL — 35 tests passing total', at:'2026-07-29T19:05:00Z'},
+    ],
+    notes:'Mock: when(classifierService.classify(any())).thenReturn(new ClassificationResult(type, "rationale"))\n      when(decomposerService.decompose(any(), any())).thenReturn(List.of())\n\nFor scalable test: input contains "scalable" → ambiguity message contains "scalable" AND "undefined".',
+    createdAt:'2026-07-29T19:00:00Z',
+  },
+  {
+    id:'s12', level:'L11',
+    title:'Controller Tests — @WebMvcTest + @MockBean (9 scenarios)',
+    prompt:`Write controller tests for RequirementController.
+
+@WebMvcTest(RequirementController.class)
+@Import(GlobalExceptionHandler.class)    ← explicit import needed (different package)
+class RequirementControllerTest {
+  @Autowired MockMvc mockMvc
+  @Autowired ObjectMapper objectMapper
+  @MockBean  RequirementAnalyzerService analyzerService
+}
+
+9 tests:
+  1. analyze_validRequest_returns200WithAnalysis        — $.analysisId, $.scenarioType
+  2. analyze_blankRequirement_returns400ValidationError — $.error=="VALIDATION_ERROR"
+  3. analyze_nullRequirement_returns400
+  4. analyze_requirementTooShort_returns400             — "short" (5 chars, min=10)
+  5. analyze_requirementTooLong_returns400              — 5001 chars (max=5000)
+  6. analyze_withContext_returns200
+  7. analyze_serviceThrowsRuntimeException_returns500  — $.error=="INTERNAL_ERROR"
+  8. health_returns200WithMessage                       — "Requirement Engine is running"
+  9. analyze_missingContentType_returns415`,
+    status:'done', category:'testing',
+    tags:['junit5','webmvctest','mockmvc','controller'],
+    changes:[
+      {text:'Full rewrite: @SpringBootTest → @WebMvcTest(RequirementController.class)', at:'2026-07-29T19:20:00Z'},
+      {text:'Added @Import(GlobalExceptionHandler.class) — required for exception handler in different package', at:'2026-07-29T19:21:00Z'},
+      {text:'Added HttpMediaTypeNotSupportedException handler to GlobalExceptionHandler → 415', at:'2026-07-29T19:22:00Z'},
+      {text:'sampleResponse() helper builds full AnalysisResponse with all fields', at:'2026-07-29T19:23:00Z'},
+      {text:'BUILD SUCCESSFUL — all 9 controller + 26 service tests pass (35 total)', at:'2026-07-29T19:25:00Z'},
+    ],
+    notes:'@WebMvcTest does not auto-scan @RestControllerAdvice from a different package.\n@Import(GlobalExceptionHandler.class) explicitly includes it in the slice context.',
+    createdAt:'2026-07-29T19:20:00Z',
+  },
+  {
+    id:'s13', level:'L12',
+    title:'Docker & Compose — Multi-Stage Build',
+    prompt:`Generate production-ready Docker and Compose configuration.
+
+Dockerfile (2-stage):
+  Stage 1 — builder (gradle:8.10-jdk21):
+    COPY gradle wrapper + build descriptor files
+    RUN ./gradlew dependencies --no-daemon    ← cache layer
+    COPY src directories
+    RUN ./gradlew :requirement-engine:bootJar --no-daemon -x test
+
+  Stage 2 — runtime (eclipse-temurin:21-jre-jammy):
+    addgroup appgroup + adduser appuser (non-root)
+    WORKDIR /app
+    COPY --from=builder --chown=appuser:appgroup .../requirement-engine.jar app.jar
+    EXPOSE 8090 | USER appuser
+    ENTRYPOINT ["java", "-XX:+UseVirtualThreads", "-jar", "app.jar"]
+
+docker-compose.yml:
+  requirement-engine: build:., ports 8090:8090
+  healthcheck: curl /actuator/health, interval 10s, retries 3
+  restart: unless-stopped
+
+.dockerignore:
+  build/, .gradle/, .idea/, .git/, out/, *.log, logs/, .DS_Store`,
+    status:'done', category:'devops',
+    tags:['docker','compose','multi-stage','containerisation'],
+    changes:[
+      {text:'Dockerfile — 2-stage: gradle:8.10-jdk21 builder + eclipse-temurin:21-jre-jammy runtime', at:'2026-07-29T19:40:00Z'},
+      {text:'Dependency cache layer: build files copied before src → ./gradlew dependencies', at:'2026-07-29T19:41:00Z'},
+      {text:'Non-root user appuser/appgroup — --chown on COPY + USER appuser before ENTRYPOINT', at:'2026-07-29T19:42:00Z'},
+      {text:'-XX:+UseVirtualThreads JVM flag in ENTRYPOINT', at:'2026-07-29T19:43:00Z'},
+      {text:'docker-compose.yml — healthcheck + restart: unless-stopped', at:'2026-07-29T19:44:00Z'},
+      {text:'.dockerignore — excludes build/, .gradle/, .idea/, .git/, logs/', at:'2026-07-29T19:45:00Z'},
+    ],
+    notes:'Cache strategy: copying only build.gradle.kts files before src means the dependency layer is only invalidated when build files change.\nSecurity: non-root runtime user prevents privilege escalation.',
+    createdAt:'2026-07-29T19:40:00Z',
+  },
+  {
+    id:'s14', level:'L13',
+    title:'Smoke Tests & Full Validation — 35 tests, 8 curl checks, all PASS',
+    prompt:`Run full validation.
+
+COMPILE & BUILD:
+  ./gradlew :core:compileJava
+  ./gradlew :requirement-engine:compileJava
+  ./gradlew :requirement-engine:test --rerun
+  ./gradlew :requirement-engine:bootJar
+
+SMOKE TESTS (server on port 8090):
+  1. GET  /api/v1/requirements/health  → "Requirement Engine is running"
+  2. POST GREENFIELD requirement       → scenarioType=GREENFIELD, tasks.size()==11
+  3. POST BROWNFIELD requirement       → scenarioType=BROWNFIELD, tasks.size()==7
+  4. POST AMBIGUOUS  requirement       → scenarioType=AMBIGUOUS,  tasks.size()==6
+  5. POST blank requirement            → 400, error=VALIDATION_ERROR
+  6. POST 5-char requirement           → 400, error=VALIDATION_ERROR
+  7. GET  /swagger-ui.html             → HTML contains "swagger"
+  8. GET  /actuator/health             → status=UP
+
+Report PASS or FAIL for each.`,
+    status:'done', category:'testing',
+    tags:['smoke-tests','validation','curl','actuator'],
+    changes:[
+      {text:':core:compileJava — PASS', at:'2026-07-29T20:00:00Z'},
+      {text:':requirement-engine:compileJava — PASS', at:'2026-07-29T20:01:00Z'},
+      {text:':requirement-engine:test — PASS (35 tests: Controller×9, Analyzer×12, Classifier×6, Decomposer×8)', at:'2026-07-29T20:02:00Z'},
+      {text:':requirement-engine:bootJar — PASS → requirement-engine.jar', at:'2026-07-29T20:03:00Z'},
+      {text:'Smoke 1 PASS — "Requirement Engine is running"', at:'2026-07-29T20:05:00Z'},
+      {text:'Smoke 2 PASS — GREENFIELD, 11 tasks (T1→T11)', at:'2026-07-29T20:06:00Z'},
+      {text:'Smoke 3 PASS — BROWNFIELD, 7 tasks (T1→T7)', at:'2026-07-29T20:07:00Z'},
+      {text:'Smoke 4 PASS — AMBIGUOUS, 6 tasks (T1→T6)', at:'2026-07-29T20:08:00Z'},
+      {text:'Smoke 5+6 PASS — 400 VALIDATION_ERROR', at:'2026-07-29T20:09:00Z'},
+      {text:'Smoke 7 PASS — /swagger-ui.html → HTML contains "swagger"', at:'2026-07-29T20:10:00Z'},
+      {text:'Smoke 8 PASS — /actuator/health → status=UP', at:'2026-07-29T20:11:00Z'},
+    ],
+    notes:'Server requires Java 21 — system java was 17, used explicit path:\n/Users/bankuma/Library/Java/JavaVirtualMachines/ms-21.0.10/Contents/Home/bin/java\n\nAll 4 build steps: PASS | All 8 smoke tests: PASS | 35 automated tests: 0 failures',
+    createdAt:'2026-07-29T20:00:00Z',
+  },
+  {
+    id:'s15', level:'L14',
+    title:'url-shortener Module + Multi-Module Extension Pattern',
+    prompt:`Add a third module: url-shortener (standalone Spring Boot, port 8091).
+
+1. Update settings.gradle.kts:
+   include("core", "requirement-engine", "url-shortener")
+
+2. url-shortener/build.gradle.kts:
+   - project(":core"), web, data-jpa, validation, actuator
+   - flyway-core, h2 (runtimeOnly), postgresql (runtimeOnly)
+   - springdoc 2.6.0, Lombok, bootJar → url-shortener.jar
+
+3. url-shortener/src/main/resources/application.yml:
+   - port: 8091, virtual threads enabled
+   - datasource: jdbc:h2:mem:urlshortener (in-memory H2)
+   - spring.jpa.hibernate.ddl-auto: validate  (Flyway owns schema)
+   - spring.flyway.enabled: true
+   - app.base-url: \${APP_BASE_URL:http://localhost:8091}
+
+4. UrlShortenerApplication.java (minimal @SpringBootApplication)
+
+5. Explain multi-module extension pattern and how aiPromptHints feed development.`,
+    status:'done', category:'feature',
+    tags:['url-shortener','multi-module','h2','flyway','postgresql'],
+    changes:[
+      {text:'settings.gradle.kts — added "url-shortener" to include()', at:'2026-07-29T20:20:00Z'},
+      {text:'url-shortener/build.gradle.kts — all dependencies, bootJar → url-shortener.jar', at:'2026-07-29T20:21:00Z'},
+      {text:'application.yml — port 8091, H2 datasource, Flyway, JPA validate, app.base-url', at:'2026-07-29T20:22:00Z'},
+      {text:'UrlShortenerApplication.java — @SpringBootApplication entry point', at:'2026-07-29T20:23:00Z'},
+      {text:':url-shortener:compileJava PASS — all 3 modules compile', at:'2026-07-29T20:24:00Z'},
+    ],
+    notes:'Module ports:\n  requirement-engine → 8090\n  url-shortener      → 8091\n  notification-engine → 8092 (future)\n  code-generator-engine → 8093 (future)\n\nurl-shortener is a scaffold — entity, Flyway migrations, service, controller to be built from aiPromptHints.',
+    createdAt:'2026-07-29T20:20:00Z',
+  },
+  {
+    id:'s16', level:'L15',
+    title:'README.md — 14-Section Technical Documentation (495 lines)',
+    prompt:`Write a complete README.md at the project root.
+
+14 sections:
+  1.  Overview — what it does, problem it solves, who it's for
+  2.  System Architecture — ASCII component diagram
+  3.  Module Structure — table + directory tree
+  4.  Tech Stack — table: technology | version | purpose (15 rows)
+  5.  Classification Logic — keyword sets + 4-branch decision tree
+  6.  Task Categories — all 8 TaskCategory values with descriptions
+  7.  Prerequisites — Java 21, Docker 24+, Gradle 8.10+
+  8.  Getting Started — clone+build, bootRun, docker compose, test
+  9.  API Reference — endpoint table + 3 curl examples (G/B/A)
+  10. Response Schema — annotated JSONC with every field explained
+  11. Design Decisions — table: decision | alternatives | rationale (8 rows)
+  12. Risk Register — table: risk | likelihood | impact | mitigation (8 risks)
+  13. Extending the System — 4-step guide to add a new engine module
+  14. Assumptions & Limitations (7 named limitations)`,
+    status:'done', category:'docs',
+    tags:['readme','documentation','architecture','api-reference'],
+    changes:[
+      {text:'README.md created at project root — 495 lines, all 14 sections', at:'2026-07-29T20:40:00Z'},
+      {text:'Section 2: full ASCII architecture diagram', at:'2026-07-29T20:41:00Z'},
+      {text:'Section 5: both keyword sets (14 greenfield, 21 brownfield) + 4-branch decision tree', at:'2026-07-29T20:42:00Z'},
+      {text:'Section 10: annotated JSONC with all fields explained inline', at:'2026-07-29T20:43:00Z'},
+      {text:'Section 11: 8-row design decision table', at:'2026-07-29T20:44:00Z'},
+      {text:'Section 12: 8 risks with likelihood/impact/mitigation columns', at:'2026-07-29T20:45:00Z'},
+    ],
+    notes:'Task counts documented: GREENFIELD=11, BROWNFIELD=7, AMBIGUOUS=6\n7 named limitations: no persistence, no auth, English only, fixed task count, aiPromptHint is template not execution\n4-step extension guide with port assignment table',
+    createdAt:'2026-07-29T20:40:00Z',
+  },
+];
+
+// ── PERSISTENCE ──────────────────────────────────────────────────────
+function load() {
+  try {
+    let stored = JSON.parse(localStorage.getItem(KEY)) || [];
+    const ids = new Set(stored.map(e => e.id));
+    const fresh = SEED.filter(s => !ids.has(s.id));
+    entries = [...stored, ...fresh];
+    if (!entries.length) entries = [...SEED];
+    save();
+  } catch {
+    entries = [...SEED];
+    save();
   }
+}
 
-  function save() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+function save() {
+  localStorage.setItem(KEY, JSON.stringify(entries));
+}
+
+// ── ADD FORM TOGGLE ──────────────────────────────────────────────────
+function toggleAddForm() {
+  addOpen = !addOpen;
+  document.getElementById('add-body').classList.toggle('hidden', !addOpen);
+  document.getElementById('add-arrow').textContent = addOpen ? '▲' : '▼';
+}
+
+// ── TAG INPUT ────────────────────────────────────────────────────────
+document.getElementById('inp-tag').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const v = this.value.trim();
+    if (v && !pendingTags.includes(v)) { pendingTags.push(v); renderPendingTags(); }
+    this.value = '';
   }
+});
 
-  // ── tag input ─────────────────────────────────────────────────
-  document.getElementById('inp-tag').addEventListener('keydown', e => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      const val = e.target.value.trim();
-      if (val && !pendingTags.includes(val)) {
-        pendingTags.push(val);
-        renderPendingTags();
-      }
-      e.target.value = '';
-    }
-  });
-
-  function renderPendingTags() {
-    const el = document.getElementById('new-tags');
-    el.innerHTML = pendingTags.map((t, i) =>
-      `<span class="tag" style="cursor:pointer" onclick="removeTag(${i})">${t} ✕</span>`
+function renderPendingTags() {
+  document.getElementById('new-tags').innerHTML =
+    pendingTags.map((t, i) =>
+      '<span class="tag" style="cursor:pointer" onclick="removeTag(' + i + ')">' + esc(t) + ' ✕</span>'
     ).join('');
-  }
+}
 
-  function removeTag(i) {
-    pendingTags.splice(i, 1);
-    renderPendingTags();
-  }
+function removeTag(i) { pendingTags.splice(i, 1); renderPendingTags(); }
 
-  // ── add entry ─────────────────────────────────────────────────
-  function addEntry() {
-    const title = document.getElementById('inp-title').value.trim();
-    const prompt = document.getElementById('inp-prompt').value.trim();
-    if (!title) { showToast('Please enter a title.', 'red'); return; }
-
-    const entry = {
-      id: Date.now().toString(),
-      title,
-      prompt,
-      status: document.getElementById('inp-status').value,
-      category: document.getElementById('inp-category').value,
-      tags: [...pendingTags],
-      changes: [],
-      notes: '',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    entries.unshift(entry);
-    save();
-
-    document.getElementById('inp-title').value = '';
-    document.getElementById('inp-prompt').value = '';
-    document.getElementById('inp-status').value = 'todo';
-    document.getElementById('inp-category').value = '';
-    pendingTags = [];
-    renderPendingTags();
-
-    renderList();
-    selectEntry(entry.id);
-    showToast('Prompt entry added.');
-  }
-
-  // ── render list ───────────────────────────────────────────────
-  function renderList() {
-    const q = document.getElementById('search').value.toLowerCase();
-    const fs = document.getElementById('filter-status').value;
-    const list = document.getElementById('entry-list');
-
-    const filtered = entries.filter(e => {
-      const matchQ = !q || e.title.toLowerCase().includes(q) || e.prompt.toLowerCase().includes(q) || e.tags.some(t => t.toLowerCase().includes(q));
-      const matchS = !fs || e.status === fs;
-      return matchQ && matchS;
-    });
-
-    list.innerHTML = filtered.length === 0
-      ? `<div style="text-align:center;color:var(--muted);font-size:0.8rem;padding:24px;">No entries found.</div>`
-      : filtered.map((e, i) => `
-          <div class="entry-card ${e.id === activeId ? 'active' : ''}" onclick="selectEntry('${e.id}')">
-            <div class="entry-card-top">
-              <span class="entry-num">#${filtered.length - i}</span>
-              <span class="badge badge-${e.status}">${statusLabel(e.status)}</span>
-            </div>
-            <div class="entry-title">${esc(e.title)}</div>
-            <div class="entry-meta">${e.category ? e.category + ' · ' : ''}${fmtDate(e.createdAt)} · ${e.changes.length} change${e.changes.length !== 1 ? 's' : ''}</div>
-            ${e.tags.length ? `<div class="tags">${e.tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>` : ''}
-          </div>`
-      ).join('');
-
-    updateStats();
-  }
-
-  // ── select entry ──────────────────────────────────────────────
-  function selectEntry(id) {
-    activeId = id;
-    const e = entries.find(x => x.id === id);
-    if (!e) return;
-
-    document.getElementById('empty-state').style.display = 'none';
-    const dv = document.getElementById('detail-view');
-    dv.style.display = 'flex';
-
-    document.getElementById('dv-title').textContent = e.title;
-    document.getElementById('dv-meta').textContent =
-      `Created ${fmtDate(e.createdAt)} · Updated ${fmtDate(e.updatedAt)}${e.category ? ' · ' + e.category : ''}`;
-    document.getElementById('dv-prompt').textContent = e.prompt || '(no prompt text)';
-    document.getElementById('dv-notes').value = e.notes || '';
-    document.getElementById('dv-tags').innerHTML = e.tags.map(t => `<span class="tag">${esc(t)}</span>`).join('');
-
-    const statusSel = document.getElementById('dv-status');
-    statusSel.innerHTML = ['todo','progress','done','blocked'].map(s =>
-      `<option value="${s}" ${e.status === s ? 'selected' : ''}>${statusLabel(s)}</option>`
-    ).join('');
-
-    renderChanges(e);
-    renderList();
-  }
-
-  function renderChanges(e) {
-    const ul = document.getElementById('dv-changes');
-    ul.innerHTML = e.changes.length === 0
-      ? `<li style="color:var(--muted);font-size:0.8rem;padding:4px 0;">No changes logged yet.</li>`
-      : e.changes.map((c, i) => `
-          <li class="change-item">
-            <span class="change-text">${esc(c.text)}</span>
-            <span style="display:flex;align-items:center;gap:6px;">
-              <span class="change-time">${fmtDate(c.at)}</span>
-              <button class="btn btn-icon" onclick="removeChange(${i})" title="Remove">✕</button>
-            </span>
-          </li>`
-      ).join('');
-  }
-
-  // ── add change ────────────────────────────────────────────────
-  function addChange() {
-    const inp = document.getElementById('inp-change');
-    const text = inp.value.trim();
-    if (!text || !activeId) return;
-
-    const e = entries.find(x => x.id === activeId);
-    if (!e) return;
-
-    e.changes.push({ text, at: new Date().toISOString() });
-    e.updatedAt = new Date().toISOString();
-    save();
-    inp.value = '';
-    renderChanges(e);
-    renderList();
-    showToast('Change logged.');
-  }
-
-  document.getElementById('inp-change').addEventListener('keydown', e => {
-    if (e.key === 'Enter') { e.preventDefault(); addChange(); }
-  });
-
-  function removeChange(idx) {
-    const e = entries.find(x => x.id === activeId);
-    if (!e) return;
-    e.changes.splice(idx, 1);
-    e.updatedAt = new Date().toISOString();
-    save();
-    renderChanges(e);
-    renderList();
-  }
-
-  // ── update status ─────────────────────────────────────────────
-  function updateStatus() {
-    const e = entries.find(x => x.id === activeId);
-    if (!e) return;
-    e.status = document.getElementById('dv-status').value;
-    e.updatedAt = new Date().toISOString();
-    save();
-    renderList();
-    showToast('Status updated.');
-  }
-
-  // ── update notes ──────────────────────────────────────────────
-  let notesTimer;
-  function updateNotes() {
-    clearTimeout(notesTimer);
-    notesTimer = setTimeout(() => {
-      const e = entries.find(x => x.id === activeId);
-      if (!e) return;
-      e.notes = document.getElementById('dv-notes').value;
-      e.updatedAt = new Date().toISOString();
-      save();
-    }, 600);
-  }
-
-  // ── delete entry ──────────────────────────────────────────────
-  function deleteEntry() {
-    if (!activeId) return;
-    if (!confirm('Delete this entry?')) return;
-    entries = entries.filter(x => x.id !== activeId);
-    activeId = null;
-    save();
-    document.getElementById('empty-state').style.display = 'flex';
-    document.getElementById('detail-view').style.display = 'none';
-    renderList();
-    showToast('Entry deleted.', 'red');
-  }
-
-  // ── export / import ───────────────────────────────────────────
-  function exportJSON() {
-    const blob = new Blob([JSON.stringify(entries, null, 2)], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `copilot-sessions-${new Date().toISOString().slice(0,10)}.json`;
-    a.click();
-  }
-
-  function importJSON() {
-    const inp = document.createElement('input');
-    inp.type = 'file';
-    inp.accept = '.json';
-    inp.onchange = e => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = ev => {
-        try {
-          const data = JSON.parse(ev.target.result);
-          if (Array.isArray(data)) {
-            entries = data;
-            save();
-            renderList();
-            showToast(`Imported ${data.length} entries.`);
-          }
-        } catch { showToast('Invalid JSON file.', 'red'); }
-      };
-      reader.readAsText(file);
-    };
-    inp.click();
-  }
-
-  // ── stats ─────────────────────────────────────────────────────
-  function updateStats() {
-    document.getElementById('stat-total').textContent = entries.length;
-    document.getElementById('stat-done').textContent = entries.filter(e => e.status === 'done').length;
-    document.getElementById('stat-progress').textContent = entries.filter(e => e.status === 'progress').length;
-  }
-
-  // ── helpers ───────────────────────────────────────────────────
-  function statusLabel(s) {
-    return { todo: 'To Do', progress: 'In Progress', done: 'Done', blocked: 'Blocked' }[s] || s;
-  }
-
-  function fmtDate(iso) {
-    if (!iso) return '';
-    const d = new Date(iso);
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' +
-           d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-  }
-
-  function esc(s) {
-    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  }
-
-  function showToast(msg, color) {
-    const t = document.getElementById('toast');
-    t.textContent = msg;
-    t.style.borderLeftColor = color === 'red' ? 'var(--red)' : 'var(--green)';
-    t.classList.add('show');
-    setTimeout(() => t.classList.remove('show'), 2200);
-  }
-
-  // ── init ──────────────────────────────────────────────────────
-  load();
+// ── ADD ENTRY ────────────────────────────────────────────────────────
+function addEntry() {
+  const title = document.getElementById('inp-title').value.trim();
+  if (!title) { showToast('Enter a title first.', 'red'); return; }
+  const e = {
+    id: Date.now().toString(),
+    level: '',
+    title: title,
+    prompt: document.getElementById('inp-prompt').value.trim(),
+    status: document.getElementById('inp-status').value,
+    category: document.getElementById('inp-category').value,
+    tags: pendingTags.slice(),
+    changes: [],
+    notes: '',
+    createdAt: new Date().toISOString(),
+  };
+  entries.push(e);
+  save();
+  document.getElementById('inp-title').value = '';
+  document.getElementById('inp-prompt').value = '';
+  document.getElementById('inp-status').value = 'todo';
+  document.getElementById('inp-category').value = '';
+  pendingTags = [];
+  renderPendingTags();
+  toggleAddForm();
   renderList();
+  showToast('Entry added!');
+}
+
+// ── RENDER LIST ──────────────────────────────────────────────────────
+function renderList() {
+  const q  = document.getElementById('search').value.toLowerCase();
+  const fs = document.getElementById('filter-status').value;
+  const fc = document.getElementById('filter-cat').value;
+
+  const filtered = entries.filter(function(e) {
+    const mq = !q || e.title.toLowerCase().includes(q)
+              || (e.prompt||'').toLowerCase().includes(q)
+              || e.tags.some(function(t){ return t.toLowerCase().includes(q); });
+    const ms = !fs || e.status === fs;
+    const mc = !fc || e.category === fc;
+    return mq && ms && mc;
+  });
+
+  document.getElementById('entry-count').textContent = filtered.length;
+  updateStats();
+
+  var list = document.getElementById('entry-list');
+  if (!filtered.length) {
+    list.innerHTML = '<div class="no-entries">No entries match your filters.</div>';
+    return;
+  }
+
+  list.innerHTML = filtered.map(function(e) { return cardHTML(e); }).join('');
+}
+
+function cardHTML(e) {
+  var lvl = e.level || levelFromTitle(e.title);
+  var sc  = 's-' + e.status;
+  var sl  = statusLabel(e.status);
+
+  var tagsHTML = e.tags.length
+    ? '<div class="tag-row" style="flex-shrink:0">' + e.tags.map(function(t){ return '<span class="tag">' + esc(t) + '</span>'; }).join('') + '</div>'
+    : '';
+
+  var changesHTML = e.changes.length
+    ? '<ul class="changes-list">' + e.changes.map(function(c, i) {
+        return '<li>'
+          + '<span>' + esc(c.text) + '</span>'
+          + '<small>' + fmtDate(c.at) + '</small>'
+          + '<button class="rm-btn" onclick="event.stopPropagation();removeChange(\'' + e.id + '\',' + i + ')" title="Remove">✕</button>'
+          + '</li>';
+      }).join('') + '</ul>'
+    : '<div style="font-size:12px;color:var(--dim);padding:4px 0;">No changes logged yet.</div>';
+
+  return '<div class="entry-card" id="card-' + e.id + '">'
+    + '<div class="card-head" onclick="toggleCard(\'' + e.id + '\')">'
+    + (lvl ? '<span class="lv-badge">' + esc(lvl) + '</span>' : '')
+    + '<div class="card-title">'
+    + esc(e.title)
+    + (e.category
+        ? '<small>' + esc(e.category) + ' · ' + fmtDate(e.createdAt) + '</small>'
+        : '<small>' + fmtDate(e.createdAt) + '</small>')
+    + '</div>'
+    + tagsHTML
+    + '<span class="status-badge ' + sc + '">' + sl + '</span>'
+    + '<span class="arrow">▼</span>'
+    + '</div>'
+
+    + '<div class="card-body">'
+
+    // Q
+    + '<div class="qa-section">'
+    + '<div class="qa-label ql">Q — Prompt</div>'
+    + '<div class="prompt-text">' + esc(e.prompt || '(no prompt text)') + '</div>'
+    + '</div>'
+
+    // A
+    + '<div class="qa-section">'
+    + '<div class="qa-label al">A — Changes &amp; Outcomes</div>'
+    + changesHTML
+    + '<div class="add-change-row">'
+    + '<input type="text" id="ci-' + e.id + '" placeholder="Log a change or outcome…"'
+    + ' onkeydown="if(event.key===\'Enter\'){event.preventDefault();addChange(\'' + e.id + '\')}" />'
+    + '<button class="btn btn-sm" onclick="addChange(\'' + e.id + '\')">Log</button>'
+    + '</div>'
+    + '</div>'
+
+    // Notes
+    + '<div class="qa-section">'
+    + '<div class="qa-label nl">Notes</div>'
+    + '<textarea class="notes-ta" id="nt-' + e.id + '"'
+    + ' placeholder="Key decisions, gotchas, context…"'
+    + ' oninput="updateNotes(\'' + e.id + '\')">' + esc(e.notes||'') + '</textarea>'
+    + '</div>'
+
+    // Actions
+    + '<div class="card-actions">'
+    + '<select onchange="updateStatus(\'' + e.id + '\',this.value)">'
+    + ['todo','progress','done','blocked'].map(function(s){
+        return '<option value="' + s + '"' + (e.status===s?' selected':'') + '>' + statusLabel(s) + '</option>';
+      }).join('')
+    + '</select>'
+    + '<span class="card-meta-info">' + e.changes.length + ' change' + (e.changes.length!==1?'s':'') + '</span>'
+    + '<button class="btn btn-sm btn-danger" onclick="deleteEntry(\'' + e.id + '\')">Delete</button>'
+    + '</div>'
+
+    + '</div>'
+    + '</div>';
+}
+
+// ── CARD TOGGLE ──────────────────────────────────────────────────────
+function toggleCard(id) {
+  var card = document.getElementById('card-' + id);
+  if (card) card.classList.toggle('open');
+}
+
+// ── CHANGES ──────────────────────────────────────────────────────────
+function addChange(id) {
+  var inp = document.getElementById('ci-' + id);
+  if (!inp) return;
+  var text = inp.value.trim();
+  if (!text) return;
+  var e = entries.find(function(x){ return x.id === id; });
+  if (!e) return;
+  e.changes.push({ text: text, at: new Date().toISOString() });
+  save();
+  inp.value = '';
+  rerenderCard(id);
+  showToast('Change logged.');
+}
+
+function removeChange(id, idx) {
+  var e = entries.find(function(x){ return x.id === id; });
+  if (!e) return;
+  e.changes.splice(idx, 1);
+  save();
+  rerenderCard(id);
+}
+
+// ── NOTES ────────────────────────────────────────────────────────────
+var noteTimers = {};
+function updateNotes(id) {
+  clearTimeout(noteTimers[id]);
+  noteTimers[id] = setTimeout(function() {
+    var e = entries.find(function(x){ return x.id === id; });
+    if (!e) return;
+    var ta = document.getElementById('nt-' + id);
+    if (ta) { e.notes = ta.value; save(); }
+  }, 600);
+}
+
+// ── STATUS ────────────────────────────────────────────────────────────
+function updateStatus(id, val) {
+  var e = entries.find(function(x){ return x.id === id; });
+  if (!e) return;
+  e.status = val;
+  save();
+  rerenderCard(id);
+  updateStats();
+  showToast('Status updated.');
+}
+
+// ── DELETE ────────────────────────────────────────────────────────────
+function deleteEntry(id) {
+  if (!confirm('Delete this entry?')) return;
+  entries = entries.filter(function(x){ return x.id !== id; });
+  save();
+  var card = document.getElementById('card-' + id);
+  if (card) card.remove();
+  var cnt = document.getElementById('entry-count');
+  cnt.textContent = parseInt(cnt.textContent) - 1;
+  updateStats();
+  showToast('Entry deleted.', 'red');
+}
+
+// ── RE-RENDER SINGLE CARD ─────────────────────────────────────────────
+function rerenderCard(id) {
+  var e = entries.find(function(x){ return x.id === id; });
+  if (!e) return;
+  var card = document.getElementById('card-' + id);
+  if (!card) return;
+  var wasOpen = card.classList.contains('open');
+  var tmp = document.createElement('div');
+  tmp.innerHTML = cardHTML(e);
+  var newCard = tmp.firstElementChild;
+  if (wasOpen) newCard.classList.add('open');
+  card.replaceWith(newCard);
+}
+
+// ── STATS ─────────────────────────────────────────────────────────────
+function updateStats() {
+  var total = entries.length;
+  var done  = entries.filter(function(e){ return e.status === 'done'; }).length;
+  var prog  = entries.filter(function(e){ return e.status === 'progress'; }).length;
+  document.getElementById('st-total').textContent = total + ' total';
+  document.getElementById('st-done').textContent  = done  + ' done';
+  document.getElementById('st-prog').textContent  = prog  + ' active';
+  var pct = total ? Math.round((done / total) * 100) : 0;
+  document.getElementById('prog-fill').style.width = pct + '%';
+}
+
+// ── EXPORT / IMPORT ───────────────────────────────────────────────────
+function exportJSON() {
+  var blob = new Blob([JSON.stringify(entries, null, 2)], {type:'application/json'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'copilot-sessions-' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+}
+
+function importJSON() {
+  var inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = '.json';
+  inp.onchange = function(ev) {
+    var file = ev.target.files[0]; if (!file) return;
+    var r = new FileReader();
+    r.onload = function(e2) {
+      try {
+        var data = JSON.parse(e2.target.result);
+        if (Array.isArray(data)) { entries = data; save(); renderList(); showToast('Imported ' + data.length + ' entries.'); }
+      } catch(err) { showToast('Invalid JSON.', 'red'); }
+    };
+    r.readAsText(file);
+  };
+  inp.click();
+}
+
+// ── HELPERS ───────────────────────────────────────────────────────────
+function statusLabel(s) {
+  return {todo:'To Do', progress:'In Progress', done:'Done', blocked:'Blocked'}[s] || s;
+}
+
+function levelFromTitle(t) {
+  var m = t.match(/^Level\s+(\d+)/i);
+  return m ? 'L' + m[1] : '';
+}
+
+function fmtDate(iso) {
+  if (!iso) return '';
+  var d = new Date(iso);
+  return d.toLocaleDateString('en-US',{month:'short',day:'numeric'})
+       + ' ' + d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+}
+
+function esc(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function showToast(msg, type) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.borderLeftColor = type === 'red' ? 'var(--red)' : 'var(--green)';
+  t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, 2200);
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────
+load();
+renderList();
 </script>
 </body>
 </html>
