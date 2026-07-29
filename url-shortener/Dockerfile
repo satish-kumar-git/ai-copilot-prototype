@@ -7,15 +7,15 @@ WORKDIR /workspace
 COPY gradle gradle/
 COPY gradlew gradlew.bat settings.gradle.kts build.gradle.kts gradle.properties ./
 COPY core/build.gradle.kts core/build.gradle.kts
-COPY requirement-engine/build.gradle.kts requirement-engine/build.gradle.kts
+COPY url-shortener/build.gradle.kts url-shortener/build.gradle.kts
 
 RUN ./gradlew dependencies --no-daemon
 
 # Copy source and build the fat jar
 COPY core/src core/src/
-COPY requirement-engine/src requirement-engine/src/
+COPY url-shortener/src url-shortener/src/
 
-RUN ./gradlew :requirement-engine:bootJar --no-daemon -x test
+RUN ./gradlew :url-shortener:bootJar --no-daemon -x test
 
 # ── Stage 2: runtime ─────────────────────────────────────────────────────────
 FROM eclipse-temurin:21-jre-jammy
@@ -25,9 +25,9 @@ RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
 WORKDIR /app
 
 COPY --from=builder --chown=appuser:appgroup \
-    /workspace/requirement-engine/build/libs/requirement-engine.jar app.jar
+    /workspace/url-shortener/build/libs/url-shortener.jar app.jar
 
-EXPOSE 8090
+EXPOSE 8091
 
 USER appuser
 

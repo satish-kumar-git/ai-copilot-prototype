@@ -211,7 +211,7 @@ Each LLM-generated artifact was reviewed by the engineer before committing:
 | Three example scenarios (Greenfield / Brownfield / Ambiguous) | Section 7 of this README with live curl examples |
 | Architecture overview with AI tool integration | Section 2 diagram; Section 5 workflow table |
 | Risk register including AI-specific risks | Section 18 — `AI_HALLUCINATION` and `AI_COVERAGE_GAP` are surfaced in every analysis response |
-| Validation and QA | 58-test suite across 3 layers (unit, `@WebMvcTest` controller, `@SpringBootTest` integration) |
+| Validation and QA | 54-test suite across 3 layers (unit, `@WebMvcTest` controller, `@SpringBootTest` integration) |
 | End-to-end URL shortener implementation | Full CRUD, redirect, click analytics, custom alias, expiry, soft-delete |
 | Assumptions and limitations | Section 20 |
 
@@ -300,7 +300,7 @@ cd ai-copilot-prototype
 ./gradlew build
 ```
 
-Compiles all 3 modules, runs all 58 tests, and produces:
+Compiles all 3 modules, runs all 54 tests, and produces:
 - `requirement-engine/build/libs/requirement-engine.jar`
 - `url-shortener/build/libs/url-shortener.jar`
 
@@ -351,9 +351,9 @@ docker compose logs -f       # stream logs
 ### f. Run tests
 
 ```bash
-./gradlew test                             # all modules (58 tests)
-./gradlew :requirement-engine:test         # 35 tests
-./gradlew :url-shortener:test              # 23 tests
+./gradlew test                             # all modules (54 tests)
+./gradlew :requirement-engine:test         # 29 tests
+./gradlew :url-shortener:test              # 25 tests
 ./gradlew :requirement-engine:test --rerun # force re-run (bypass cache)
 ```
 
@@ -429,6 +429,7 @@ Base URL: `http://localhost:8091`
 | `originalUrl` | `String` | Original URL |
 | `createdAt` | `String` | ISO-8601 creation timestamp |
 | `expiresAt` | `String` | ISO-8601 expiry timestamp (null if no expiry) |
+| `clickCount` | `Long` | Total number of times this link has been followed |
 
 ### Response — `UrlStatsResponse`
 
@@ -443,7 +444,7 @@ Base URL: `http://localhost:8091`
 | `lastClickedAt` | `String` | Timestamp of most recent click |
 | `active` | `boolean` | `false` if soft-deleted |
 | `expired` | `boolean` | `true` if past `expiresAt` |
-| `dailyStats` | `List<DailyClickCount>` | Per-day click counts (`date`, `count`) |
+| `dailyStats` | `List<DailyClickCount>` | Per-day click counts for the last 7 days (`date` YYYY-MM-DD, `count`) |
 
 ### curl examples
 
@@ -645,14 +646,14 @@ cors:
 
 | Module | Test class | Type | Count |
 |--------|-----------|------|:-----:|
-| requirement-engine | `ScenarioClassifierServiceTest` | Unit | 8 |
-| requirement-engine | `TaskDecomposerServiceTest` | Unit | 9 |
-| requirement-engine | `RequirementAnalyzerServiceTest` | Unit | 9 |
+| requirement-engine | `ScenarioClassifierServiceTest` | Unit | 6 |
+| requirement-engine | `TaskDecomposerServiceTest` | Unit | 6 |
+| requirement-engine | `RequirementAnalyzerServiceTest` | Unit | 8 |
 | requirement-engine | `RequirementControllerTest` | `@WebMvcTest` | 9 |
 | url-shortener | `UrlShortenerServiceTest` | Unit | 10 |
-| url-shortener | `UrlShortenerControllerTest` | `@WebMvcTest` | 8 |
+| url-shortener | `UrlShortenerControllerTest` | `@WebMvcTest` | 10 |
 | url-shortener | `UrlShortenerIntegrationTest` | `@SpringBootTest` | 5 |
-| **Total** | | | **58** |
+| **Total** | | | **54** |
 
 ### Key testing patterns
 
@@ -769,4 +770,6 @@ include("core", "requirement-engine", "url-shortener", "notification-engine")
 - **`aiPromptHint` is a template, not an execution**: The hints embed the requirement text but do not call any LLM. They must be pasted manually into an LLM by the engineer.
 - **H2 only for url-shortener**: To switch to PostgreSQL, provide `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, and `SPRING_DATASOURCE_PASSWORD` environment variables and remove `spring.datasource.driver-class-name: org.h2.Driver`.
 - **No redirect analytics beyond click count per day**: The `click_events` table captures `user_agent`, `ip_address`, and `referer`, but the `/stats` endpoint only aggregates by day. Geolocation, browser, and referrer breakdowns are not implemented.
+- **IP tracking is not proxy-aware**: Click events record `request.getRemoteAddr()`, which returns the direct TCP client IP. Behind a load balancer or reverse proxy this is the proxy IP, not the real client IP. Production deployments should read `X-Forwarded-For` header instead.
+- **Click tracking is synchronous**: The redirect and click event recording share a single `@Transactional` boundary. The redirect blocks until the DB write completes. For high-throughput production use, click recording should be moved to an `@Async` fire-and-forget call.
 - **English only**: All keyword matching and fixed rationale strings are in English.
