@@ -2,13 +2,32 @@ version: "3.9"
 
 services:
   requirement-engine:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "8090:8090"
     environment:
       - SPRING_APPLICATION_NAME=requirement-engine
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8090/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
+  url-shortener:
+    build:
+      context: .
+      dockerfile: url-shortener/Dockerfile
+    ports:
+      - "8091:8091"
+    environment:
+      - SPRING_APPLICATION_NAME=url-shortener
+      - APP_BASE_URL=http://localhost:8091
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8091/actuator/health"]
       interval: 10s
       timeout: 5s
       retries: 3
