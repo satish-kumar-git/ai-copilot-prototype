@@ -1,0 +1,38 @@
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node
+node_modules/
+dist/
+build/
+.env
+.env.local
+.env*.local
+npm-debug.log*
+yarn-error.log*
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+dist/
+.pytest_cache/
+
+# Java / Maven / Gradle
+target/
+*.class
+*.jar
+*.war
+.gradle/
+
+# Logs
+*.log
+logs/
