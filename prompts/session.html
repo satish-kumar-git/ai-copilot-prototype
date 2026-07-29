@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Copilot — Prompt Session Tracker</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --border: #2e3250;
+      --accent: #6c63ff;
+      --accent-dim: #4e47c4;
+      --green: #22c55e;
+      --yellow: #f59e0b;
+      --red: #ef4444;
+      --blue: #3b82f6;
+      --text: #e2e8f0;
+      --muted: #8892a4;
+      --radius: 10px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      padding: 18px 32px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    header h1 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    header h1 span.logo {
+      background: var(--accent);
+      color: #fff;
+      border-radius: 6px;
+      padding: 2px 8px;
+      font-size: 0.75rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+    }
+
+    .header-actions { display: flex; gap: 10px; align-items: center; }
+
+    .stats {
+      display: flex;
+      gap: 20px;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .stats span strong { color: var(--text); }
+
+    main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      gap: 0;
+      height: calc(100vh - 64px);
+    }
+
+    /* ── Left panel ── */
+    .panel-left {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .panel-left-top {
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    input[type="text"], textarea, select {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: var(--radius);
+      padding: 8px 12px;
+      font-size: 0.875rem;
+      width: 100%;
+      outline: none;
+      transition: border-color 0.15s;
+      font-family: inherit;
+    }
+
+    input[type="text"]:focus, textarea:focus, select:focus {
+      border-color: var(--accent);
+    }
+
+    textarea { resize: vertical; min-height: 80px; }
+
+    .row { display: flex; gap: 8px; }
+
+    select { flex: 1; }
+
+    .tag-input {
+      display: flex;
+      gap: 6px;
+    }
+
+    .tag-input input { flex: 1; }
+
+    .btn {
+      cursor: pointer;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 0.875rem;
+      font-weight: 600;
+      padding: 8px 16px;
+      transition: opacity 0.15s, background 0.15s;
+    }
+
+    .btn:hover { opacity: 0.88; }
+
+    .btn-primary { background: var(--accent); color: #fff; width: 100%; padding: 10px; }
+    .btn-ghost { background: var(--surface2); color: var(--text); }
+    .btn-icon { background: transparent; color: var(--muted); padding: 4px 8px; font-size: 1rem; }
+    .btn-icon:hover { color: var(--text); }
+
+    /* search + filter */
+    .panel-filter {
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      gap: 8px;
+    }
+
+    .panel-filter input { flex: 1; }
+
+    /* entry list */
+    .entry-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+    }
+
+    .entry-list::-webkit-scrollbar { width: 5px; }
+    .entry-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    .entry-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+
+    .entry-card:hover { border-color: var(--accent); }
+    .entry-card.active { border-color: var(--accent); background: #1e1f35; }
+
+    .entry-card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .entry-num {
+      font-size: 0.7rem;
+      color: var(--accent);
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .badge {
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 20px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+    }
+
+    .badge-done { background: #16532840; color: var(--green); }
+    .badge-progress { background: #78350f40; color: var(--yellow); }
+    .badge-todo { background: #1e3a8a40; color: var(--blue); }
+    .badge-blocked { background: #7f1d1d40; color: var(--red); }
+
+    .entry-title {
+      font-size: 0.82rem;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .entry-meta {
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+
+    .tag {
+      font-size: 0.65rem;
+      background: #2e3250;
+      color: var(--muted);
+      border-radius: 4px;
+      padding: 1px 6px;
+    }
+
+    /* ── Right panel ── */
+    .panel-right {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .detail-header {
+      padding: 20px 28px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .detail-header h2 { font-size: 1.05rem; font-weight: 700; line-height: 1.4; }
+    .detail-header .meta { font-size: 0.78rem; color: var(--muted); margin-top: 4px; }
+
+    .detail-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+    .detail-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 28px;
+    }
+
+    .detail-body::-webkit-scrollbar { width: 5px; }
+    .detail-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    .section-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .section { margin-bottom: 24px; }
+
+    .prompt-box {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      font-size: 0.875rem;
+      line-height: 1.65;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .changes-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+
+    .change-item {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+      border-radius: var(--radius);
+      padding: 10px 14px;
+      font-size: 0.84rem;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .change-item .change-text { flex: 1; line-height: 1.5; }
+    .change-item .change-time { font-size: 0.7rem; color: var(--muted); white-space: nowrap; }
+
+    .add-change-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .add-change-row input { flex: 1; }
+
+    .notes-area {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      font-size: 0.875rem;
+      line-height: 1.65;
+      min-height: 100px;
+      width: 100%;
+      color: var(--text);
+      font-family: inherit;
+      resize: vertical;
+      outline: none;
+    }
+
+    .notes-area:focus { border-color: var(--accent); }
+
+    /* empty state */
+    .empty-state {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 0.9rem;
+      text-align: center;
+      padding: 40px;
+    }
+
+    .empty-state .icon { font-size: 3rem; opacity: 0.4; }
+
+    /* confirm toast */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--green);
+      border-radius: var(--radius);
+      padding: 12px 20px;
+      font-size: 0.875rem;
+      color: var(--text);
+      z-index: 999;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity 0.2s, transform 0.2s;
+      pointer-events: none;
+    }
+
+    .toast.show { opacity: 1; transform: translateY(0); }
+
+    /* responsive */
+    @media (max-width: 720px) {
+      main { grid-template-columns: 1fr; }
+      .panel-right { display: none; }
+      .panel-right.visible { display: flex; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>
+    <span class="logo">AI</span>
+    Copilot — Prompt Session Tracker
+  </h1>
+  <div class="header-actions">
+    <div class="stats" id="stats">
+      <span><strong id="stat-total">0</strong> prompts</span>
+      <span><strong id="stat-done">0</strong> done</span>
+      <span><strong id="stat-progress">0</strong> in progress</span>
+    </div>
+    <button class="btn btn-ghost" onclick="exportJSON()">Export</button>
+    <button class="btn btn-ghost" onclick="importJSON()">Import</button>
+  </div>
+</header>
+
+<main>
+  <!-- Left: form + list -->
+  <div class="panel-left">
+    <div class="panel-left-top">
+      <input type="text" id="inp-title" placeholder="Prompt title / short description" />
+      <textarea id="inp-prompt" placeholder="Paste your full prompt here..."></textarea>
+      <div class="row">
+        <select id="inp-status">
+          <option value="todo">To Do</option>
+          <option value="progress">In Progress</option>
+          <option value="done">Done</option>
+          <option value="blocked">Blocked</option>
+        </select>
+        <select id="inp-category">
+          <option value="">Category</option>
+          <option value="feature">Feature</option>
+          <option value="bugfix">Bug Fix</option>
+          <option value="refactor">Refactor</option>
+          <option value="research">Research</option>
+          <option value="config">Config</option>
+          <option value="docs">Docs</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="tag-input">
+        <input type="text" id="inp-tag" placeholder="Add tag, press Enter" />
+      </div>
+      <div id="new-tags" class="tags"></div>
+      <button class="btn btn-primary" onclick="addEntry()">+ Add Prompt Entry</button>
+    </div>
+
+    <div class="panel-filter">
+      <input type="text" id="search" placeholder="Search prompts..." oninput="renderList()" />
+      <select id="filter-status" onchange="renderList()" style="width:120px;">
+        <option value="">All</option>
+        <option value="todo">To Do</option>
+        <option value="progress">In Progress</option>
+        <option value="done">Done</option>
+        <option value="blocked">Blocked</option>
+      </select>
+    </div>
+
+    <div class="entry-list" id="entry-list"></div>
+  </div>
+
+  <!-- Right: detail view -->
+  <div class="panel-right" id="panel-right">
+    <div class="empty-state" id="empty-state">
+      <div class="icon">📋</div>
+      <div>Select a prompt entry to view details</div>
+      <div style="font-size:0.78rem;">or add your first prompt on the left</div>
+    </div>
+
+    <div id="detail-view" style="display:none; flex-direction:column; height:100%;">
+      <div class="detail-header">
+        <div>
+          <h2 id="dv-title"></h2>
+          <div class="meta" id="dv-meta"></div>
+          <div class="tags" id="dv-tags" style="margin-top:8px;"></div>
+        </div>
+        <div class="detail-actions">
+          <select id="dv-status" onchange="updateStatus()" style="width:130px;"></select>
+          <button class="btn btn-ghost" onclick="deleteEntry()">Delete</button>
+        </div>
+      </div>
+
+      <div class="detail-body">
+        <div class="section">
+          <div class="section-label">Prompt</div>
+          <div class="prompt-box" id="dv-prompt"></div>
+        </div>
+
+        <div class="section">
+          <div class="section-label">Changes Tracked</div>
+          <ul class="changes-list" id="dv-changes"></ul>
+          <div class="add-change-row">
+            <input type="text" id="inp-change" placeholder="Log a change or outcome..." />
+            <button class="btn btn-ghost" onclick="addChange()">Add</button>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-label">Notes</div>
+          <textarea class="notes-area" id="dv-notes" placeholder="Additional notes, context, or observations..." oninput="updateNotes()"></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const STORAGE_KEY = 'ai-copilot-sessions';
+  let entries = [];
+  let activeId = null;
+  let pendingTags = [];
+
+  // ── persistence ──────────────────────────────────────────────
+  const SEED = [
+    {
+      id: '1753776000000',
+      title: 'AI Copilot Prototype — System Design & Architecture',
+      prompt: `You are a senior product engineer and software architect.\n\nI want to build an "AI Copilot Prototype" — a backend service that helps software engineers move faster by transforming vague or informal requirements into structured, actionable engineering plans with AI-ready prompt hints for each task.\n\nThe system must:\n1. Accept a free-text software requirement (Greenfield, Brownfield, or Ambiguous).\n2. Classify the requirement into one of three scenario types:\n   - GREENFIELD: new system or feature ("build", "create", "implement")\n   - BROWNFIELD: change to an existing system ("fix", "enhance", "refactor", "migrate")\n   - AMBIGUOUS: unclear — cannot be safely decomposed without clarification\n3. Decompose the requirement into an ordered list of engineering tasks, each with:\n   - ID, title, description, category, priority, dependencies, and an AI prompt hint\n4. Identify ambiguities (undefined terms like "scalable", missing auth scope, no SLA)\n5. Generate relevant engineering risks and baseline assumptions\n6. Return the full analysis as a structured JSON response via a REST API\n\nDo the following:\n1. Define the product vision in one paragraph.\n2. List the core user personas (who uses this and why).\n3. Define 8 acceptance criteria in Given/When/Then format.\n4. Identify the top 5 risks of building this system.\n5. Propose the module architecture (how many modules, what each owns).\n6. Recommend the tech stack with rationale for each choice.\n\nOutput as structured markdown.`,
+      status: 'progress',
+      category: 'feature',
+      tags: ['architecture', 'greenfield', 'AI', 'backend', 'design'],
+      changes: [
+        { text: 'Created project repository and added .gitignore', at: '2026-07-29T13:56:00.000Z' },
+        { text: 'Created prompts/session.html — interactive prompt tracker', at: '2026-07-29T14:10:00.000Z' },
+        { text: 'Generated requirement-analysis.md — full product vision, personas, 8 ACs, 5 risks, module architecture, tech stack', at: '2026-07-29T14:20:00.000Z' },
+      ],
+      notes: 'Full analysis saved to prompts/requirement-analysis.md\n\nKey decisions:\n- Python 3.12 + FastAPI for backend\n- Anthropic Claude (claude-sonnet-4-5) as LLM provider\n- Pydantic v2 for schema validation\n- 7-module architecture: API Gateway, Orchestrator, Classifier, Ambiguity Detector, Task Decomposer, Risk Analyzer, LLM Adapter\n\nTop risk: LLM output inconsistency — mitigate with structured output mode + Pydantic validation + retry logic.',
+      createdAt: '2026-07-29T13:53:00.000Z',
+      updatedAt: '2026-07-29T14:20:00.000Z',
+    }
+  ];
+
+  function load() {
+    try {
+      entries = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+      if (entries.length === 0) {
+        entries = SEED;
+        save();
+      }
+    } catch { entries = SEED; save(); }
+  }
+
+  function save() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+  }
+
+  // ── tag input ─────────────────────────────────────────────────
+  document.getElementById('inp-tag').addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const val = e.target.value.trim();
+      if (val && !pendingTags.includes(val)) {
+        pendingTags.push(val);
+        renderPendingTags();
+      }
+      e.target.value = '';
+    }
+  });
+
+  function renderPendingTags() {
+    const el = document.getElementById('new-tags');
+    el.innerHTML = pendingTags.map((t, i) =>
+      `<span class="tag" style="cursor:pointer" onclick="removeTag(${i})">${t} ✕</span>`
+    ).join('');
+  }
+
+  function removeTag(i) {
+    pendingTags.splice(i, 1);
+    renderPendingTags();
+  }
+
+  // ── add entry ─────────────────────────────────────────────────
+  function addEntry() {
+    const title = document.getElementById('inp-title').value.trim();
+    const prompt = document.getElementById('inp-prompt').value.trim();
+    if (!title) { showToast('Please enter a title.', 'red'); return; }
+
+    const entry = {
+      id: Date.now().toString(),
+      title,
+      prompt,
+      status: document.getElementById('inp-status').value,
+      category: document.getElementById('inp-category').value,
+      tags: [...pendingTags],
+      changes: [],
+      notes: '',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    entries.unshift(entry);
+    save();
+
+    document.getElementById('inp-title').value = '';
+    document.getElementById('inp-prompt').value = '';
+    document.getElementById('inp-status').value = 'todo';
+    document.getElementById('inp-category').value = '';
+    pendingTags = [];
+    renderPendingTags();
+
+    renderList();
+    selectEntry(entry.id);
+    showToast('Prompt entry added.');
+  }
+
+  // ── render list ───────────────────────────────────────────────
+  function renderList() {
+    const q = document.getElementById('search').value.toLowerCase();
+    const fs = document.getElementById('filter-status').value;
+    const list = document.getElementById('entry-list');
+
+    const filtered = entries.filter(e => {
+      const matchQ = !q || e.title.toLowerCase().includes(q) || e.prompt.toLowerCase().includes(q) || e.tags.some(t => t.toLowerCase().includes(q));
+      const matchS = !fs || e.status === fs;
+      return matchQ && matchS;
+    });
+
+    list.innerHTML = filtered.length === 0
+      ? `<div style="text-align:center;color:var(--muted);font-size:0.8rem;padding:24px;">No entries found.</div>`
+      : filtered.map((e, i) => `
+          <div class="entry-card ${e.id === activeId ? 'active' : ''}" onclick="selectEntry('${e.id}')">
+            <div class="entry-card-top">
+              <span class="entry-num">#${filtered.length - i}</span>
+              <span class="badge badge-${e.status}">${statusLabel(e.status)}</span>
+            </div>
+            <div class="entry-title">${esc(e.title)}</div>
+            <div class="entry-meta">${e.category ? e.category + ' · ' : ''}${fmtDate(e.createdAt)} · ${e.changes.length} change${e.changes.length !== 1 ? 's' : ''}</div>
+            ${e.tags.length ? `<div class="tags">${e.tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>` : ''}
+          </div>`
+      ).join('');
+
+    updateStats();
+  }
+
+  // ── select entry ──────────────────────────────────────────────
+  function selectEntry(id) {
+    activeId = id;
+    const e = entries.find(x => x.id === id);
+    if (!e) return;
+
+    document.getElementById('empty-state').style.display = 'none';
+    const dv = document.getElementById('detail-view');
+    dv.style.display = 'flex';
+
+    document.getElementById('dv-title').textContent = e.title;
+    document.getElementById('dv-meta').textContent =
+      `Created ${fmtDate(e.createdAt)} · Updated ${fmtDate(e.updatedAt)}${e.category ? ' · ' + e.category : ''}`;
+    document.getElementById('dv-prompt').textContent = e.prompt || '(no prompt text)';
+    document.getElementById('dv-notes').value = e.notes || '';
+    document.getElementById('dv-tags').innerHTML = e.tags.map(t => `<span class="tag">${esc(t)}</span>`).join('');
+
+    const statusSel = document.getElementById('dv-status');
+    statusSel.innerHTML = ['todo','progress','done','blocked'].map(s =>
+      `<option value="${s}" ${e.status === s ? 'selected' : ''}>${statusLabel(s)}</option>`
+    ).join('');
+
+    renderChanges(e);
+    renderList();
+  }
+
+  function renderChanges(e) {
+    const ul = document.getElementById('dv-changes');
+    ul.innerHTML = e.changes.length === 0
+      ? `<li style="color:var(--muted);font-size:0.8rem;padding:4px 0;">No changes logged yet.</li>`
+      : e.changes.map((c, i) => `
+          <li class="change-item">
+            <span class="change-text">${esc(c.text)}</span>
+            <span style="display:flex;align-items:center;gap:6px;">
+              <span class="change-time">${fmtDate(c.at)}</span>
+              <button class="btn btn-icon" onclick="removeChange(${i})" title="Remove">✕</button>
+            </span>
+          </li>`
+      ).join('');
+  }
+
+  // ── add change ────────────────────────────────────────────────
+  function addChange() {
+    const inp = document.getElementById('inp-change');
+    const text = inp.value.trim();
+    if (!text || !activeId) return;
+
+    const e = entries.find(x => x.id === activeId);
+    if (!e) return;
+
+    e.changes.push({ text, at: new Date().toISOString() });
+    e.updatedAt = new Date().toISOString();
+    save();
+    inp.value = '';
+    renderChanges(e);
+    renderList();
+    showToast('Change logged.');
+  }
+
+  document.getElementById('inp-change').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); addChange(); }
+  });
+
+  function removeChange(idx) {
+    const e = entries.find(x => x.id === activeId);
+    if (!e) return;
+    e.changes.splice(idx, 1);
+    e.updatedAt = new Date().toISOString();
+    save();
+    renderChanges(e);
+    renderList();
+  }
+
+  // ── update status ─────────────────────────────────────────────
+  function updateStatus() {
+    const e = entries.find(x => x.id === activeId);
+    if (!e) return;
+    e.status = document.getElementById('dv-status').value;
+    e.updatedAt = new Date().toISOString();
+    save();
+    renderList();
+    showToast('Status updated.');
+  }
+
+  // ── update notes ──────────────────────────────────────────────
+  let notesTimer;
+  function updateNotes() {
+    clearTimeout(notesTimer);
+    notesTimer = setTimeout(() => {
+      const e = entries.find(x => x.id === activeId);
+      if (!e) return;
+      e.notes = document.getElementById('dv-notes').value;
+      e.updatedAt = new Date().toISOString();
+      save();
+    }, 600);
+  }
+
+  // ── delete entry ──────────────────────────────────────────────
+  function deleteEntry() {
+    if (!activeId) return;
+    if (!confirm('Delete this entry?')) return;
+    entries = entries.filter(x => x.id !== activeId);
+    activeId = null;
+    save();
+    document.getElementById('empty-state').style.display = 'flex';
+    document.getElementById('detail-view').style.display = 'none';
+    renderList();
+    showToast('Entry deleted.', 'red');
+  }
+
+  // ── export / import ───────────────────────────────────────────
+  function exportJSON() {
+    const blob = new Blob([JSON.stringify(entries, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `copilot-sessions-${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+  }
+
+  function importJSON() {
+    const inp = document.createElement('input');
+    inp.type = 'file';
+    inp.accept = '.json';
+    inp.onchange = e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        try {
+          const data = JSON.parse(ev.target.result);
+          if (Array.isArray(data)) {
+            entries = data;
+            save();
+            renderList();
+            showToast(`Imported ${data.length} entries.`);
+          }
+        } catch { showToast('Invalid JSON file.', 'red'); }
+      };
+      reader.readAsText(file);
+    };
+    inp.click();
+  }
+
+  // ── stats ─────────────────────────────────────────────────────
+  function updateStats() {
+    document.getElementById('stat-total').textContent = entries.length;
+    document.getElementById('stat-done').textContent = entries.filter(e => e.status === 'done').length;
+    document.getElementById('stat-progress').textContent = entries.filter(e => e.status === 'progress').length;
+  }
+
+  // ── helpers ───────────────────────────────────────────────────
+  function statusLabel(s) {
+    return { todo: 'To Do', progress: 'In Progress', done: 'Done', blocked: 'Blocked' }[s] || s;
+  }
+
+  function fmtDate(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' +
+           d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function esc(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function showToast(msg, color) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.borderLeftColor = color === 'red' ? 'var(--red)' : 'var(--green)';
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2200);
+  }
+
+  // ── init ──────────────────────────────────────────────────────
+  load();
+  renderList();
+</script>
+</body>
+</html>
